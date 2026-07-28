@@ -16,6 +16,8 @@
     --text-faint: #45484d;
     --accent: #8a9a8e;
     --accent-dim: #4f5952;
+    --accent-interactive: #9fc4ab;
+    --accent-glow: rgba(159, 196, 171, 0.35);
     --danger: #a8615a;
     --danger-dim: #5c3733;
     --mono: 'SF Mono', 'JetBrains Mono', Consolas, monospace;
@@ -35,6 +37,17 @@
   }
 
   ::selection { background: var(--accent-dim); color: var(--text); }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
 
   button {
     font-family: var(--mono);
@@ -115,7 +128,7 @@
     transition: all 0.15s ease;
   }
 
-  .lock-btn:hover { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .lock-btn:hover { background: var(--accent-interactive); border-color: var(--accent-interactive); color: var(--bg); }
 
   .lock-note {
     margin-top: 18px;
@@ -227,7 +240,7 @@
     white-space: nowrap;
     transition: all 0.15s ease;
   }
-  .new-entry-btn:hover { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .new-entry-btn:hover { background: var(--accent-interactive); border-color: var(--accent-interactive); color: var(--bg); }
 
   .entry-list {
     display: flex;
@@ -239,12 +252,15 @@
     background: var(--bg-raised);
     border: 1px solid transparent;
     border-radius: 3px;
-    padding: 14px 16px;
+    padding: 16px 18px;
     cursor: pointer;
-    transition: all 0.12s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
     margin-bottom: 6px;
   }
-  .entry-row:hover { border-color: var(--border); }
+  .entry-row:hover {
+    border-color: var(--border-focus);
+    background: #171a1f;
+  }
 
   .entry-row-top {
     display: flex;
@@ -518,7 +534,7 @@
     border-radius: 3px;
     transition: all 0.15s ease;
   }
-  .settings-btn:hover { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .settings-btn:hover { background: var(--accent-interactive); border-color: var(--accent-interactive); color: var(--bg); }
   .settings-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .settings-btn.danger-btn {
@@ -1416,6 +1432,39 @@
     } catch (err) {
       restoreFileInput.value = '';
       showModal('import failed', err.message || 'could not read this file as a ledger backup.', [{ label: 'ok' }]);
+    }
+  });
+
+  // ---------- keyboard shortcuts ----------
+  // only active once unlocked, and never while a modal is open, to avoid
+  // firing a shortcut mid-confirmation (e.g. locking while a delete prompt is up).
+  window.addEventListener('keydown', (e) => {
+    if (!app.classList.contains('active')) return;
+    if (!modalOverlay.classList.contains('hidden')) return;
+
+    const mod = e.metaKey || e.ctrlKey;
+    if (!mod) return;
+
+    // Cmd/Ctrl+Shift+L: lock immediately
+    if (e.shiftKey && e.key.toLowerCase() === 'l') {
+      e.preventDefault();
+      lockApp();
+      return;
+    }
+
+    // Cmd/Ctrl+N: new entry (only from the list view, not mid-edit of another entry)
+    if (!e.shiftKey && e.key.toLowerCase() === 'n') {
+      if (!editorView.classList.contains('hidden') || !settingsView.classList.contains('hidden')) return;
+      e.preventDefault();
+      newEntry();
+      return;
+    }
+
+    // Cmd/Ctrl+S: force an immediate save while editing
+    if (!e.shiftKey && e.key.toLowerCase() === 's') {
+      if (editorView.classList.contains('hidden')) return;
+      e.preventDefault();
+      flushSave(true);
     }
   });
 
