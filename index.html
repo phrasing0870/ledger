@@ -216,8 +216,74 @@
   .list-toolbar {
     display: flex;
     gap: 10px;
-    margin: 24px 0;
+    margin: 24px 0 12px 0;
   }
+
+  .view-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+
+  .view-tab {
+    background: none;
+    border: 1px solid transparent;
+    color: var(--text-faint);
+    padding: 6px 12px;
+    border-radius: 3px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+  }
+  .view-tab:hover { color: var(--text-dim); }
+  .view-tab.active {
+    color: var(--text);
+    border-color: var(--border);
+    background: var(--bg-raised);
+  }
+  .view-tab .tab-count {
+    color: inherit;
+    opacity: 0.6;
+    margin-left: 4px;
+  }
+
+  .search-scope-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: -4px 0 16px 0;
+  }
+  .search-scope-row label {
+    font-size: 11px;
+    color: var(--text-faint);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .search-scope-row input[type="checkbox"] {
+    accent-color: var(--accent-interactive);
+  }
+
+  .entry-row-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .entry-row-action-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+  }
+  .entry-row-action-btn:hover { border-color: var(--border-focus); color: var(--text); }
+  .entry-row-action-btn.danger:hover { border-color: var(--danger-dim); color: var(--danger); }
 
   .search-input {
     flex: 1;
@@ -606,9 +672,20 @@
       </div>
     </div>
 
+    <div class="view-tabs" id="viewTabs">
+      <button class="view-tab active" id="tabActive" data-view="active">entries<span class="tab-count" id="countActive"></span></button>
+      <button class="view-tab" id="tabArchived" data-view="archived">archived<span class="tab-count" id="countArchived"></span></button>
+      <button class="view-tab" id="tabTrash" data-view="trash">trash<span class="tab-count" id="countTrash"></span></button>
+      <button class="icon-btn danger hidden" id="emptyTrashBtn" style="margin-left: auto;">empty trash</button>
+    </div>
+
     <div class="list-toolbar">
       <input type="text" class="search-input" id="searchInput" placeholder="search entries…" />
       <button class="new-entry-btn" id="newEntryBtn">+ new entry</button>
+    </div>
+
+    <div class="search-scope-row hidden" id="searchScopeRow">
+      <label><input type="checkbox" id="includeArchivedSearch" /> include archived in search</label>
     </div>
 
     <div class="entry-list" id="entryList"></div>
@@ -624,7 +701,11 @@
     <div class="editor-header">
       <button class="back-btn" id="backBtn">&larr; back</button>
       <div class="editor-actions">
-        <button class="icon-btn danger" id="deleteEntryBtn">delete</button>
+        <button class="icon-btn hidden" id="archiveEntryBtn">archive</button>
+        <button class="icon-btn hidden" id="unarchiveEntryBtn">unarchive</button>
+        <button class="icon-btn hidden" id="restoreEntryBtn">restore</button>
+        <button class="icon-btn danger hidden" id="deleteEntryBtn">delete</button>
+        <button class="icon-btn danger hidden" id="deleteForeverBtn">delete forever</button>
       </div>
     </div>
 
@@ -660,7 +741,7 @@
 
     <div class="settings-section">
       <div class="settings-section-title">storage</div>
-      <div class="settings-stat-row"><span>entries</span><span id="statEntryCount">—</span></div>
+      <div class="settings-stat-row"><span>entries (all, incl. archived/trash)</span><span id="statEntryCount">—</span></div>
       <div class="settings-stat-row"><span>approx. size</span><span id="statSize">—</span></div>
       <div class="settings-stat-row"><span>last export</span><span id="statLastExport">—</span></div>
     </div>
@@ -708,10 +789,11 @@
 
   let db = null;
   let cryptoKey = null;
-  let entries = []; // decrypted, in-memory: {id, title, body, tags, createdAt, updatedAt}
+  let entries = []; // decrypted, in-memory: {id, title, body, tags, createdAt, updatedAt, archivedAt, deletedAt}
   let currentEntryId = null;
   let autosaveTimer = null;
   let sessionDecryptStats = { verified: 0, failed: 0 };
+  let currentView = 'active'; // 'active' | 'archived' | 'trash'
 
   // ---------- utility: encoding ----------
   const enc = new TextEncoder();
@@ -851,6 +933,15 @@
   const emptyState = $('emptyState');
   const searchInput = $('searchInput');
   const newEntryBtn = $('newEntryBtn');
+  const tabActive = $('tabActive');
+  const tabArchived = $('tabArchived');
+  const tabTrash = $('tabTrash');
+  const countActive = $('countActive');
+  const countArchived = $('countArchived');
+  const countTrash = $('countTrash');
+  const searchScopeRow = $('searchScopeRow');
+  const includeArchivedSearch = $('includeArchivedSearch');
+  const emptyTrashBtn = $('emptyTrashBtn');
   const exportBtn = $('exportBtn');
   const exportStatus = $('exportStatus');
   const importBtn = $('importBtn');
@@ -858,6 +949,10 @@
 
   const backBtn = $('backBtn');
   const deleteEntryBtn = $('deleteEntryBtn');
+  const archiveEntryBtn = $('archiveEntryBtn');
+  const unarchiveEntryBtn = $('unarchiveEntryBtn');
+  const restoreEntryBtn = $('restoreEntryBtn');
+  const deleteForeverBtn = $('deleteForeverBtn');
   const entryTitle = $('entryTitle');
   const entryTags = $('entryTags');
   const entryBody = $('entryBody');
@@ -973,7 +1068,7 @@
       for (const row of rows) {
         try {
           const decrypted = await decryptJson(row.payload);
-          entries.push(Object.assign({ id: row.id }, decrypted));
+          entries.push(Object.assign({ archivedAt: null, deletedAt: null }, decrypted, { id: row.id }));
           sessionDecryptStats.verified++;
         } catch (e) {
           console.error('failed to decrypt entry', row.id, e);
@@ -1007,6 +1102,12 @@
     cryptoKey = null;
     entries = [];
     currentEntryId = null;
+    currentView = 'active';
+    tabActive.classList.add('active');
+    tabArchived.classList.remove('active');
+    tabTrash.classList.remove('active');
+    searchScopeRow.classList.remove('hidden');
+    emptyTrashBtn.classList.add('hidden');
     app.classList.remove('active');
     lockScreen.style.display = 'flex';
     passInput.value = '';
@@ -1050,9 +1151,51 @@
     }
   }
 
+  function entryStatus(e) {
+    if (e.deletedAt) return 'trash';
+    if (e.archivedAt) return 'archived';
+    return 'active';
+  }
+
+  function updateTabCounts() {
+    const counts = { active: 0, archived: 0, trash: 0 };
+    entries.forEach(e => counts[entryStatus(e)]++);
+    countActive.textContent = counts.active ? ` (${counts.active})` : '';
+    countArchived.textContent = counts.archived ? ` (${counts.archived})` : '';
+    countTrash.textContent = counts.trash ? ` (${counts.trash})` : '';
+  }
+
+  function switchView(view) {
+    currentView = view;
+    [tabActive, tabArchived, tabTrash].forEach(tab => tab.classList.remove('active'));
+    ({ active: tabActive, archived: tabArchived, trash: tabTrash })[view].classList.add('active');
+    searchScopeRow.classList.toggle('hidden', view !== 'active');
+    emptyTrashBtn.classList.toggle('hidden', view !== 'trash');
+    renderList();
+  }
+
+  tabActive.addEventListener('click', () => switchView('active'));
+  tabArchived.addEventListener('click', () => switchView('archived'));
+  tabTrash.addEventListener('click', () => switchView('trash'));
+  includeArchivedSearch.addEventListener('change', renderList);
+
   function renderList() {
+    updateTabCounts();
     const query = searchInput.value.trim().toLowerCase();
-    const sorted = [...entries].sort((a, b) => b.updatedAt - a.updatedAt);
+    const includeArchived = includeArchivedSearch.checked;
+
+    let scoped;
+    if (query && currentView === 'active') {
+      // searching from the active view can optionally reach into archived too, but never trash
+      scoped = entries.filter(e => {
+        const status = entryStatus(e);
+        return status === 'active' || (includeArchived && status === 'archived');
+      });
+    } else {
+      scoped = entries.filter(e => entryStatus(e) === currentView);
+    }
+
+    const sorted = [...scoped].sort((a, b) => b.updatedAt - a.updatedAt);
     const filtered = query
       ? sorted.filter(e =>
           (e.title || 'untitled entry').toLowerCase().includes(query) ||
@@ -1065,12 +1208,20 @@
 
     if (filtered.length === 0) {
       emptyState.classList.remove('hidden');
+      const title = emptyState.querySelector('.empty-state-title');
+      const desc = emptyState.querySelector('div:last-child');
       if (query) {
-        emptyState.querySelector('.empty-state-title').textContent = 'no matches';
-        emptyState.querySelector('div:last-child').textContent = 'try a different search term.';
+        title.textContent = 'no matches';
+        desc.textContent = 'try a different search term.';
+      } else if (currentView === 'archived') {
+        title.textContent = 'nothing archived';
+        desc.textContent = 'archived entries show up here.';
+      } else if (currentView === 'trash') {
+        title.textContent = 'trash is empty';
+        desc.textContent = 'deleted entries show up here until you empty the trash.';
       } else {
-        emptyState.querySelector('.empty-state-title').textContent = 'nothing written yet';
-        emptyState.querySelector('div:last-child').textContent = 'start your first entry above.';
+        title.textContent = 'nothing written yet';
+        desc.textContent = 'start your first entry above.';
       }
       return;
     }
@@ -1115,6 +1266,30 @@
         row.appendChild(metaRow);
       }
 
+      const actions = document.createElement('div');
+      actions.className = 'entry-row-actions';
+      const status = entryStatus(entry);
+
+      function actionBtn(label, danger, onClick) {
+        const btn = document.createElement('button');
+        btn.className = 'entry-row-action-btn' + (danger ? ' danger' : '');
+        btn.textContent = label;
+        btn.onclick = (ev) => { ev.stopPropagation(); onClick(); };
+        return btn;
+      }
+
+      if (status === 'active') {
+        actions.appendChild(actionBtn('archive', false, () => archiveEntry(entry.id)));
+        actions.appendChild(actionBtn('delete', true, () => trashEntry(entry.id)));
+      } else if (status === 'archived') {
+        actions.appendChild(actionBtn('unarchive', false, () => unarchiveEntry(entry.id)));
+        actions.appendChild(actionBtn('delete', true, () => trashEntry(entry.id)));
+      } else if (status === 'trash') {
+        actions.appendChild(actionBtn('restore', false, () => restoreEntry(entry.id)));
+        actions.appendChild(actionBtn('delete forever', true, () => confirmDeleteForever(entry.id)));
+      }
+      row.appendChild(actions);
+
       entryList.appendChild(row);
     });
   }
@@ -1133,6 +1308,7 @@
     entryTags.value = (entry.tags || []).join(', ');
     entryBody.value = entry.body || '';
     saveStatus.textContent = '';
+    refreshEditorActionButtons();
     showEditor();
   }
 
@@ -1142,13 +1318,14 @@
     }
     clearTimeout(autosaveTimer);
     const now = Date.now();
-    const entry = { id: genId(), title: '', body: '', tags: [], createdAt: now, updatedAt: now };
+    const entry = { id: genId(), title: '', body: '', tags: [], createdAt: now, updatedAt: now, archivedAt: null, deletedAt: null };
     entries.push(entry);
     currentEntryId = entry.id;
     entryTitle.value = '';
     entryTags.value = '';
     entryBody.value = '';
     saveStatus.textContent = '';
+    refreshEditorActionButtons();
     showEditor();
     setTimeout(() => entryTitle.focus(), 50);
   }
@@ -1231,7 +1408,8 @@
 
     const payload = await encryptJson({
       title: entry.title, body: entry.body, tags: entry.tags,
-      createdAt: entry.createdAt, updatedAt: entry.updatedAt
+      createdAt: entry.createdAt, updatedAt: entry.updatedAt,
+      archivedAt: entry.archivedAt || null, deletedAt: entry.deletedAt || null
     });
     await idbPut(STORE_ENTRIES, { id: entry.id, payload });
     saveStatus.textContent = 'saved ' + new Date(entry.updatedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
@@ -1241,16 +1419,138 @@
     el.addEventListener('input', scheduleSave);
   });
 
+  // ---------- archive / trash status changes ----------
+  async function persistEntryStatus(entry) {
+    // status changes (archive/trash/restore) don't touch title/body/tags,
+    // so re-encrypt with whatever is already stored rather than requiring
+    // the entry to be open in the editor.
+    const payload = await encryptJson({
+      title: entry.title, body: entry.body, tags: entry.tags,
+      createdAt: entry.createdAt, updatedAt: entry.updatedAt,
+      archivedAt: entry.archivedAt || null, deletedAt: entry.deletedAt || null
+    });
+    await idbPut(STORE_ENTRIES, { id: entry.id, payload });
+  }
+
+  async function archiveEntry(id) {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    entry.archivedAt = Date.now();
+    entry.updatedAt = Date.now();
+    await persistEntryStatus(entry);
+    renderList();
+  }
+
+  async function unarchiveEntry(id) {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    entry.archivedAt = null;
+    entry.updatedAt = Date.now();
+    await persistEntryStatus(entry);
+    renderList();
+  }
+
+  async function trashEntry(id) {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    entry.deletedAt = Date.now();
+    entry.archivedAt = null; // trash takes priority; clear archive state
+    entry.updatedAt = Date.now();
+    await persistEntryStatus(entry);
+    renderList();
+  }
+
+  async function restoreEntry(id) {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    entry.deletedAt = null;
+    entry.updatedAt = Date.now();
+    await persistEntryStatus(entry);
+    renderList();
+  }
+
+  function confirmDeleteForever(id) {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    showModal(
+      'delete this entry forever?',
+      'this permanently removes the entry from local storage. it cannot be recovered.',
+      [
+        { label: 'cancel' },
+        { label: 'delete forever', danger: true, onClick: async () => {
+          await idbDelete(STORE_ENTRIES, id);
+          entries = entries.filter(e => e.id !== id);
+          if (currentEntryId === id) currentEntryId = null;
+          if (!editorView.classList.contains('hidden') && currentEntryId === null) showList();
+          else renderList();
+        }}
+      ]
+    );
+  }
+
+  emptyTrashBtn.addEventListener('click', () => {
+    const trashCount = entries.filter(e => entryStatus(e) === 'trash').length;
+    if (trashCount === 0) return;
+    showModal(
+      'empty trash?',
+      `this permanently deletes ${trashCount} entr${trashCount === 1 ? 'y' : 'ies'} from local storage. this cannot be undone.`,
+      [
+        { label: 'cancel' },
+        { label: 'empty trash', danger: true, onClick: async () => {
+          const toDelete = entries.filter(e => entryStatus(e) === 'trash');
+          for (const e of toDelete) await idbDelete(STORE_ENTRIES, e.id);
+          entries = entries.filter(e => entryStatus(e) !== 'trash');
+          renderList();
+        }}
+      ]
+    );
+  });
+
+  // editor-view action buttons: reflect whichever entry is currently open
+  function refreshEditorActionButtons() {
+    const entry = entries.find(e => e.id === currentEntryId);
+    if (!entry) return;
+    const status = entryStatus(entry);
+    archiveEntryBtn.classList.toggle('hidden', status !== 'active');
+    unarchiveEntryBtn.classList.toggle('hidden', status !== 'archived');
+    deleteEntryBtn.classList.toggle('hidden', status === 'trash');
+    restoreEntryBtn.classList.toggle('hidden', status !== 'trash');
+    deleteForeverBtn.classList.toggle('hidden', status !== 'trash');
+  }
+
+  archiveEntryBtn.addEventListener('click', async () => {
+    if (!currentEntryId) return;
+    await flushSave(true);
+    await archiveEntry(currentEntryId);
+    refreshEditorActionButtons();
+  });
+
+  unarchiveEntryBtn.addEventListener('click', async () => {
+    if (!currentEntryId) return;
+    await unarchiveEntry(currentEntryId);
+    refreshEditorActionButtons();
+  });
+
+  restoreEntryBtn.addEventListener('click', async () => {
+    if (!currentEntryId) return;
+    await restoreEntry(currentEntryId);
+    refreshEditorActionButtons();
+  });
+
+  deleteForeverBtn.addEventListener('click', () => {
+    if (!currentEntryId) return;
+    confirmDeleteForever(currentEntryId);
+  });
+
   deleteEntryBtn.addEventListener('click', () => {
     if (!currentEntryId) return;
     showModal(
-      'delete this entry?',
-      'this cannot be undone. the entry will be permanently removed from local storage.',
+      'move this entry to trash?',
+      'it will be moved to trash and can be restored later, or permanently deleted from the trash view.',
       [
         { label: 'cancel' },
-        { label: 'delete', danger: true, onClick: async () => {
-          await idbDelete(STORE_ENTRIES, currentEntryId);
-          entries = entries.filter(e => e.id !== currentEntryId);
+        { label: 'move to trash', danger: true, onClick: async () => {
+          await trashEntry(currentEntryId);
           currentEntryId = null;
           showList();
         }}
