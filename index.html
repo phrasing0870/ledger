@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ledger</title>
+<style>
+  :root {
+    --bg: #0c0d0f;
+    --bg-raised: #131519;
+    --bg-input: #1a1d22;
+    --border: #24272d;
+    --border-focus: #3a3f47;
+    --text: #d8dade;
+    --text-dim: #74787f;
+    --text-faint: #45484d;
+    --accent: #8a9a8e;
+    --accent-dim: #4f5952;
+    --danger: #a8615a;
+    --danger-dim: #5c3733;
+    --mono: 'SF Mono', 'JetBrains Mono', Consolas, monospace;
+    --serif: Georgia, 'Iowan Old Style', serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  ::selection { background: var(--accent-dim); color: var(--text); }
+
+  button {
+    font-family: var(--mono);
+    cursor: pointer;
+  }
+
+  input, textarea, button {
+    font-size: 14px;
+  }
+
+  /* ---------- layout shells ---------- */
+
+  .screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .hidden { display: none !important; }
+
+  /* ---------- unlock / setup screen ---------- */
+
+  .lock-card {
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .lock-mark {
+    font-family: var(--serif);
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  .lock-title {
+    font-family: var(--serif);
+    font-size: 28px;
+    color: var(--text);
+    margin: 0 0 28px 0;
+    font-style: italic;
+  }
+
+  .field-label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .lock-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 3px;
+    margin-bottom: 16px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .lock-input:focus { border-color: var(--border-focus); }
+
+  .lock-btn {
+    width: 100%;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-dim);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 3px;
+    letter-spacing: 0.04em;
+    transition: all 0.15s ease;
+  }
+
+  .lock-btn:hover { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+
+  .lock-note {
+    margin-top: 18px;
+    font-size: 12px;
+    color: var(--text-faint);
+    line-height: 1.7;
+  }
+
+  .lock-error {
+    color: var(--danger);
+    font-size: 12px;
+    margin: -8px 0 16px 0;
+    min-height: 14px;
+  }
+
+  .lock-toggle {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 12px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    padding: 0;
+    margin-top: 20px;
+  }
+  .lock-toggle:hover { color: var(--text); }
+
+  /* ---------- app shell ---------- */
+
+  .app {
+    display: none;
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 32px 24px 80px 24px;
+  }
+  .app.active { display: block; }
+
+  .app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .app-title {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 22px;
+    color: var(--text);
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .export-status {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-right: 6px;
+    white-space: nowrap;
+  }
+  .export-status.stale { color: var(--danger); }
+
+  .icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 12px;
+    border-radius: 3px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+  }
+  .icon-btn:hover { border-color: var(--border-focus); color: var(--text); }
+  .icon-btn.danger:hover { border-color: var(--danger-dim); color: var(--danger); }
+
+  /* ---------- list view ---------- */
+
+  .list-toolbar {
+    display: flex;
+    gap: 10px;
+    margin: 24px 0;
+  }
+
+  .search-input {
+    flex: 1;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 12px;
+    border-radius: 3px;
+    outline: none;
+  }
+  .search-input:focus { border-color: var(--border-focus); }
+  .search-input::placeholder { color: var(--text-faint); }
+
+  .new-entry-btn {
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-dim);
+    color: var(--text);
+    padding: 9px 16px;
+    border-radius: 3px;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+  }
+  .new-entry-btn:hover { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+
+  .entry-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .entry-row {
+    background: var(--bg-raised);
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    margin-bottom: 6px;
+  }
+  .entry-row:hover { border-color: var(--border); }
+
+  .entry-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .entry-row-title {
+    font-family: var(--serif);
+    font-size: 16px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .entry-row-date {
+    font-size: 11px;
+    color: var(--text-faint);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .entry-row-preview {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .entry-row-meta {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .meta-chip {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-faint);
+  }
+  .empty-state-title {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 17px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  /* ---------- editor view ---------- */
+
+  .editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .back-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    padding: 0;
+  }
+  .back-btn:hover { color: var(--text); }
+
+  .editor-actions { display: flex; gap: 8px; }
+
+  .title-input {
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--serif);
+    font-size: 24px;
+    padding: 4px 0 12px 0;
+    margin-bottom: 16px;
+    outline: none;
+  }
+  .title-input::placeholder { color: var(--text-faint); font-style: italic; }
+  .title-input:focus { border-color: var(--border-focus); }
+
+  .meta-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .meta-field { flex: 1; min-width: 140px; }
+
+  .meta-field-label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 6px;
+  }
+
+  .meta-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 3px;
+    outline: none;
+  }
+  .meta-input:focus { border-color: var(--border-focus); }
+
+  select.meta-input { appearance: none; cursor: pointer; }
+
+  .body-textarea {
+    width: 100%;
+    min-height: 50vh;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.8;
+    resize: vertical;
+    outline: none;
+    padding: 0;
+  }
+  .body-textarea::placeholder { color: var(--text-faint); }
+
+  .save-status {
+    font-size: 11px;
+    color: var(--text-faint);
+    text-align: right;
+    margin-top: 16px;
+  }
+
+  /* ---------- modal (confirm / export-import) ---------- */
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 24px;
+  }
+
+  .modal {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .modal-title {
+    font-family: var(--serif);
+    font-size: 17px;
+    margin-bottom: 10px;
+  }
+
+  .modal-body {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .modal-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 8px 14px;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+  .modal-btn:hover { color: var(--text); border-color: var(--border-focus); }
+  .modal-btn.confirm-danger { border-color: var(--danger-dim); color: var(--danger); }
+  .modal-btn.confirm-danger:hover { background: var(--danger-dim); color: var(--text); }
+
+  .file-input-hidden { display: none; }
+
+  @media (max-width: 480px) {
+    .app { padding: 20px 16px 60px 16px; }
+    .meta-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== LOCK / SETUP SCREEN ===== -->
+<div class="screen" id="lockScreen">
+  <div class="lock-card">
+    <div class="lock-mark" id="lockMark">ledger</div>
+    <h1 class="lock-title" id="lockTitle">unlock</h1>
+
+    <label class="field-label" id="passLabel">passphrase</label>
+    <input type="password" class="lock-input" id="passInput" autocomplete="off" />
+
+    <input type="password" class="lock-input hidden" id="passConfirmInput" placeholder="confirm passphrase" autocomplete="off" />
+
+    <div class="lock-error" id="lockError"></div>
+
+    <button class="lock-btn" id="lockSubmit">unlock</button>
+
+    <div class="lock-note" id="lockNote">
+      entries are encrypted in your browser before they touch disk. there is no server, no account, and no password recovery. if you lose this passphrase, the entries are unrecoverable by design.
+    </div>
+
+    <button class="lock-toggle hidden" id="importInstead">restore from a backup file instead</button>
+    <input type="file" class="file-input-hidden" id="restoreFileInput" accept=".json" />
+  </div>
+</div>
+
+<!-- ===== APP SHELL ===== -->
+<div class="app" id="app">
+
+  <!-- LIST VIEW -->
+  <div id="listView">
+    <div class="app-header">
+      <div class="app-title">ledger</div>
+      <div class="header-actions">
+        <span class="export-status" id="exportStatus"></span>
+        <button class="icon-btn" id="exportBtn">export</button>
+        <button class="icon-btn" id="importBtn">import</button>
+        <button class="icon-btn danger" id="lockBtn">lock</button>
+      </div>
+    </div>
+
+    <div class="list-toolbar">
+      <input type="text" class="search-input" id="searchInput" placeholder="search entries…" />
+      <button class="new-entry-btn" id="newEntryBtn">+ new entry</button>
+    </div>
+
+    <div class="entry-list" id="entryList"></div>
+
+    <div class="empty-state hidden" id="emptyState">
+      <div class="empty-state-title">nothing written yet</div>
+      <div>start your first entry above.</div>
+    </div>
+  </div>
+
+  <!-- EDITOR VIEW -->
+  <div id="editorView" class="hidden">
+    <div class="editor-header">
+      <button class="back-btn" id="backBtn">&larr; back</button>
+      <div class="editor-actions">
+        <button class="icon-btn danger" id="deleteEntryBtn">delete</button>
+      </div>
+    </div>
+
+    <input type="text" class="title-input" id="entryTitle" placeholder="untitled entry" />
+
+    <div class="meta-row">
+      <div class="meta-field">
+        <label class="meta-field-label">mood (optional)</label>
+        <input type="text" class="meta-input" id="entryMood" placeholder="e.g. steady, tense, low" />
+      </div>
+      <div class="meta-field">
+        <label class="meta-field-label">tags (optional, comma separated)</label>
+        <input type="text" class="meta-input" id="entryTags" placeholder="e.g. sprosty, gym" />
+      </div>
+    </div>
+
+    <textarea class="body-textarea" id="entryBody" placeholder="write…"></textarea>
+
+    <div class="save-status" id="saveStatus"></div>
+  </div>
+
+</div>
+
+<!-- ===== MODAL ===== -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ---------- constants ----------
+  const DB_NAME = 'ledger_db';
+  const DB_VERSION = 1;
+  const STORE_ENTRIES = 'entries';
+  const STORE_META = 'meta';
+  const PBKDF2_ITERATIONS = 650000;
+  const STALE_EXPORT_DAYS = 7;
+
+  let db = null;
+  let cryptoKey = null;
+  let entries = []; // decrypted, in-memory: {id, title, body, mood, tags, createdAt, updatedAt}
+  let currentEntryId = null;
+  let autosaveTimer = null;
+
+  // ---------- utility: encoding ----------
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+
+  function bufToB64(buf) {
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+  function b64ToBuf(b64) {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+  }
+
+  // ---------- IndexedDB setup ----------
+  function openDb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const _db = e.target.result;
+        if (!_db.objectStoreNames.contains(STORE_ENTRIES)) {
+          _db.createObjectStore(STORE_ENTRIES, { keyPath: 'id' });
+        }
+        if (!_db.objectStoreNames.contains(STORE_META)) {
+          _db.createObjectStore(STORE_META, { keyPath: 'key' });
+        }
+      };
+      req.onsuccess = (e) => resolve(e.target.result);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  function idbGet(store, key) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(store, 'readonly');
+      const req = tx.objectStore(store).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  function idbGetAll(store) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(store, 'readonly');
+      const req = tx.objectStore(store).getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  function idbPut(store, value) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(store, 'readwrite');
+      tx.objectStore(store).put(value);
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  function idbDelete(store, key) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(store, 'readwrite');
+      tx.objectStore(store).delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  function idbClearAll(store) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(store, 'readwrite');
+      tx.objectStore(store).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  // ---------- crypto ----------
+  async function deriveKey(passphrase, saltB64) {
+    const salt = b64ToBuf(saltB64);
+    const baseKey = await crypto.subtle.importKey(
+      'raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']
+    );
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+      baseKey,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  async function encryptJson(obj) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const plaintext = enc.encode(JSON.stringify(obj));
+    const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, plaintext);
+    return { iv: bufToB64(iv), data: bufToB64(ciphertext) };
+  }
+
+  async function decryptJson(payload) {
+    const iv = b64ToBuf(payload.iv);
+    const ciphertext = b64ToBuf(payload.data);
+    const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(iv) }, cryptoKey, ciphertext);
+    return JSON.parse(dec.decode(plaintext));
+  }
+
+  function randomSaltB64() {
+    return bufToB64(crypto.getRandomValues(new Uint8Array(16)).buffer);
+  }
+
+  function genId() {
+    return 'e_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+  }
+
+  // ---------- DOM refs ----------
+  const $ = (id) => document.getElementById(id);
+  const lockScreen = $('lockScreen');
+  const lockTitle = $('lockTitle');
+  const passLabel = $('passLabel');
+  const passInput = $('passInput');
+  const passConfirmInput = $('passConfirmInput');
+  const lockError = $('lockError');
+  const lockSubmit = $('lockSubmit');
+  const lockNote = $('lockNote');
+  const importInstead = $('importInstead');
+  const restoreFileInput = $('restoreFileInput');
+
+  const app = $('app');
+  const listView = $('listView');
+  const editorView = $('editorView');
+  const entryList = $('entryList');
+  const emptyState = $('emptyState');
+  const searchInput = $('searchInput');
+  const newEntryBtn = $('newEntryBtn');
+  const exportBtn = $('exportBtn');
+  const exportStatus = $('exportStatus');
+  const importBtn = $('importBtn');
+  const lockBtn = $('lockBtn');
+
+  const backBtn = $('backBtn');
+  const deleteEntryBtn = $('deleteEntryBtn');
+  const entryTitle = $('entryTitle');
+  const entryMood = $('entryMood');
+  const entryTags = $('entryTags');
+  const entryBody = $('entryBody');
+  const saveStatus = $('saveStatus');
+
+  const modalOverlay = $('modalOverlay');
+  const modalTitle = $('modalTitle');
+  const modalBody = $('modalBody');
+  const modalActions = $('modalActions');
+
+  let isSetupMode = false;
+
+  // ---------- modal helper ----------
+  function showModal(title, body, actions) {
+    modalTitle.textContent = title;
+    modalBody.textContent = body;
+    modalActions.innerHTML = '';
+    actions.forEach(a => {
+      const btn = document.createElement('button');
+      btn.className = 'modal-btn' + (a.danger ? ' confirm-danger' : '');
+      btn.textContent = a.label;
+      btn.onclick = () => { hideModal(); a.onClick && a.onClick(); };
+      modalActions.appendChild(btn);
+    });
+    modalOverlay.classList.remove('hidden');
+  }
+  function hideModal() { modalOverlay.classList.add('hidden'); }
+
+  // ---------- init / lock screen mode ----------
+  async function init() {
+    db = await openDb();
+    const saltRecord = await idbGet(STORE_META, 'salt');
+    const verifyRecord = await idbGet(STORE_META, 'verify');
+
+    if (!saltRecord || !verifyRecord) {
+      isSetupMode = true;
+      lockTitle.textContent = 'set up';
+      passLabel.textContent = 'choose a passphrase';
+      passConfirmInput.classList.remove('hidden');
+      lockSubmit.textContent = 'create';
+      importInstead.classList.remove('hidden');
+    } else {
+      isSetupMode = false;
+      lockTitle.textContent = 'unlock';
+      passLabel.textContent = 'passphrase';
+      passConfirmInput.classList.add('hidden');
+      lockSubmit.textContent = 'unlock';
+      importInstead.classList.add('hidden');
+    }
+    passInput.focus();
+  }
+
+  async function handleSetup() {
+    const p1 = passInput.value;
+    const p2 = passConfirmInput.value;
+    lockError.textContent = '';
+
+    if (p1.length < 8) {
+      lockError.textContent = 'use at least 8 characters. this is your only recovery mechanism.';
+      return;
+    }
+    if (p1 !== p2) {
+      lockError.textContent = 'passphrases do not match.';
+      return;
+    }
+
+    lockSubmit.disabled = true;
+    lockSubmit.textContent = 'setting up…';
+
+    const salt = randomSaltB64();
+    cryptoKey = await deriveKey(p1, salt);
+
+    const verifyPayload = await encryptJson({ check: 'ledger-ok' });
+
+    await idbPut(STORE_META, { key: 'salt', value: salt });
+    await idbPut(STORE_META, { key: 'verify', value: verifyPayload });
+
+    entries = [];
+    enterApp();
+  }
+
+  async function handleUnlock() {
+    const p1 = passInput.value;
+    lockError.textContent = '';
+    lockSubmit.disabled = true;
+    lockSubmit.textContent = 'unlocking…';
+
+    try {
+      const saltRecord = await idbGet(STORE_META, 'salt');
+      const verifyRecord = await idbGet(STORE_META, 'verify');
+      cryptoKey = await deriveKey(p1, saltRecord.value);
+      await decryptJson(verifyRecord.value); // throws if wrong passphrase
+
+      const rows = await idbGetAll(STORE_ENTRIES);
+      entries = [];
+      for (const row of rows) {
+        try {
+          const decrypted = await decryptJson(row.payload);
+          entries.push(Object.assign({ id: row.id }, decrypted));
+        } catch (e) {
+          console.error('failed to decrypt entry', row.id, e);
+        }
+      }
+      enterApp();
+    } catch (e) {
+      lockError.textContent = 'incorrect passphrase.';
+      lockSubmit.disabled = false;
+      lockSubmit.textContent = 'unlock';
+    }
+  }
+
+  lockSubmit.addEventListener('click', () => {
+    if (isSetupMode) handleSetup(); else handleUnlock();
+  });
+  passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !isSetupMode) handleUnlock(); });
+  passConfirmInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSetup(); });
+
+  function enterApp() {
+    lockScreen.style.display = 'none';
+    app.classList.add('active');
+    passInput.value = '';
+    passConfirmInput.value = '';
+    renderList();
+    renderExportStatus();
+  }
+
+  function lockApp() {
+    cryptoKey = null;
+    entries = [];
+    currentEntryId = null;
+    app.classList.remove('active');
+    lockScreen.style.display = 'flex';
+    passInput.value = '';
+    lockError.textContent = '';
+    isSetupMode = false;
+    lockTitle.textContent = 'unlock';
+    passLabel.textContent = 'passphrase';
+    passConfirmInput.classList.add('hidden');
+    lockSubmit.textContent = 'unlock';
+    lockSubmit.disabled = false;
+    importInstead.classList.add('hidden');
+    passInput.focus();
+  }
+
+  lockBtn.addEventListener('click', lockApp);
+
+  // ---------- list rendering ----------
+  function formatDate(ts) {
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) +
+      ' · ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  }
+
+  async function renderExportStatus() {
+    const record = await idbGet(STORE_META, 'lastExport');
+    if (!record || !record.value) {
+      exportStatus.textContent = 'never exported';
+      exportStatus.classList.add('stale');
+      return;
+    }
+    const days = Math.floor((Date.now() - record.value) / (1000 * 60 * 60 * 24));
+    if (days <= 0) {
+      exportStatus.textContent = 'exported today';
+      exportStatus.classList.remove('stale');
+    } else if (days === 1) {
+      exportStatus.textContent = 'exported 1 day ago';
+      exportStatus.classList.toggle('stale', days >= STALE_EXPORT_DAYS);
+    } else {
+      exportStatus.textContent = `exported ${days} days ago`;
+      exportStatus.classList.toggle('stale', days >= STALE_EXPORT_DAYS);
+    }
+  }
+
+  function renderList() {
+    const query = searchInput.value.trim().toLowerCase();
+    const sorted = [...entries].sort((a, b) => b.updatedAt - a.updatedAt);
+    const filtered = query
+      ? sorted.filter(e =>
+          (e.title || '').toLowerCase().includes(query) ||
+          (e.body || '').toLowerCase().includes(query) ||
+          (e.mood || '').toLowerCase().includes(query) ||
+          (e.tags || []).some(t => t.toLowerCase().includes(query))
+        )
+      : sorted;
+
+    entryList.innerHTML = '';
+
+    if (filtered.length === 0) {
+      emptyState.classList.remove('hidden');
+      if (query) {
+        emptyState.querySelector('.empty-state-title').textContent = 'no matches';
+        emptyState.querySelector('div:last-child').textContent = 'try a different search term.';
+      } else {
+        emptyState.querySelector('.empty-state-title').textContent = 'nothing written yet';
+        emptyState.querySelector('div:last-child').textContent = 'start your first entry above.';
+      }
+      return;
+    }
+    emptyState.classList.add('hidden');
+
+    filtered.forEach(entry => {
+      const row = document.createElement('div');
+      row.className = 'entry-row';
+      row.onclick = () => openEntry(entry.id);
+
+      const top = document.createElement('div');
+      top.className = 'entry-row-top';
+
+      const title = document.createElement('div');
+      title.className = 'entry-row-title';
+      title.textContent = entry.title || 'untitled entry';
+
+      const date = document.createElement('div');
+      date.className = 'entry-row-date';
+      date.textContent = formatDate(entry.updatedAt);
+
+      top.appendChild(title);
+      top.appendChild(date);
+      row.appendChild(top);
+
+      if (entry.body) {
+        const preview = document.createElement('div');
+        preview.className = 'entry-row-preview';
+        preview.textContent = entry.body.slice(0, 140);
+        row.appendChild(preview);
+      }
+
+      if (entry.mood || (entry.tags && entry.tags.length)) {
+        const metaRow = document.createElement('div');
+        metaRow.className = 'entry-row-meta';
+        if (entry.mood) {
+          const chip = document.createElement('span');
+          chip.className = 'meta-chip';
+          chip.textContent = entry.mood;
+          metaRow.appendChild(chip);
+        }
+        (entry.tags || []).forEach(t => {
+          const chip = document.createElement('span');
+          chip.className = 'meta-chip';
+          chip.textContent = t;
+          metaRow.appendChild(chip);
+        });
+        row.appendChild(metaRow);
+      }
+
+      entryList.appendChild(row);
+    });
+  }
+
+  searchInput.addEventListener('input', renderList);
+
+  // ---------- editor ----------
+  function openEntry(id) {
+    currentEntryId = id;
+    const entry = entries.find(e => e.id === id);
+    entryTitle.value = entry.title || '';
+    entryMood.value = entry.mood || '';
+    entryTags.value = (entry.tags || []).join(', ');
+    entryBody.value = entry.body || '';
+    saveStatus.textContent = '';
+    showEditor();
+  }
+
+  function newEntry() {
+    const now = Date.now();
+    const entry = { id: genId(), title: '', body: '', mood: '', tags: [], createdAt: now, updatedAt: now };
+    entries.push(entry);
+    currentEntryId = entry.id;
+    entryTitle.value = '';
+    entryMood.value = '';
+    entryTags.value = '';
+    entryBody.value = '';
+    saveStatus.textContent = '';
+    showEditor();
+    setTimeout(() => entryTitle.focus(), 50);
+  }
+
+  function showEditor() {
+    listView.classList.add('hidden');
+    editorView.classList.remove('hidden');
+  }
+
+  function showList() {
+    editorView.classList.add('hidden');
+    listView.classList.remove('hidden');
+    renderList();
+  }
+
+  newEntryBtn.addEventListener('click', newEntry);
+  backBtn.addEventListener('click', () => { flushSave(true); showList(); });
+
+  function scheduleSave() {
+    saveStatus.textContent = 'saving…';
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => flushSave(false), 500);
+  }
+
+  async function flushSave(immediate) {
+    if (!currentEntryId) return;
+    clearTimeout(autosaveTimer);
+    const entry = entries.find(e => e.id === currentEntryId);
+    if (!entry) return;
+
+    entry.title = entryTitle.value;
+    entry.body = entryBody.value;
+    entry.mood = entryMood.value;
+    entry.tags = entryTags.value.split(',').map(t => t.trim()).filter(Boolean);
+    entry.updatedAt = Date.now();
+
+    // don't persist fully empty entries
+    if (!entry.title && !entry.body && !entry.mood && entry.tags.length === 0) {
+      saveStatus.textContent = '';
+      return;
+    }
+
+    const payload = await encryptJson({
+      title: entry.title, body: entry.body, mood: entry.mood, tags: entry.tags,
+      createdAt: entry.createdAt, updatedAt: entry.updatedAt
+    });
+    await idbPut(STORE_ENTRIES, { id: entry.id, payload });
+    saveStatus.textContent = 'saved ' + new Date(entry.updatedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  }
+
+  [entryTitle, entryMood, entryTags, entryBody].forEach(el => {
+    el.addEventListener('input', scheduleSave);
+  });
+
+  deleteEntryBtn.addEventListener('click', () => {
+    if (!currentEntryId) return;
+    showModal(
+      'delete this entry?',
+      'this cannot be undone. the entry will be permanently removed from local storage.',
+      [
+        { label: 'cancel' },
+        { label: 'delete', danger: true, onClick: async () => {
+          await idbDelete(STORE_ENTRIES, currentEntryId);
+          entries = entries.filter(e => e.id !== currentEntryId);
+          currentEntryId = null;
+          showList();
+        }}
+      ]
+    );
+  });
+
+  // ---------- export / import ----------
+  exportBtn.addEventListener('click', async () => {
+    const saltRecord = await idbGet(STORE_META, 'salt');
+    const verifyRecord = await idbGet(STORE_META, 'verify');
+    const rows = await idbGetAll(STORE_ENTRIES);
+
+    const dump = {
+      app: 'ledger',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      salt: saltRecord.value,
+      verify: verifyRecord.value,
+      entries: rows
+    };
+
+    const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    a.href = url;
+    a.download = `ledger-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    await idbPut(STORE_META, { key: 'lastExport', value: Date.now() });
+    renderExportStatus();
+  });
+
+  importBtn.addEventListener('click', () => {
+    showModal(
+      'import a backup?',
+      'this replaces everything currently stored in this browser with the contents of the backup file. entries not in the backup will be lost. this cannot be undone.',
+      [
+        { label: 'cancel' },
+        { label: 'choose file…', onClick: () => triggerRestoreFile(false) }
+      ]
+    );
+  });
+
+  importInstead.addEventListener('click', () => triggerRestoreFile(true));
+
+  function triggerRestoreFile(fromLockScreen) {
+    restoreFileInput.dataset.fromLock = fromLockScreen ? '1' : '0';
+    restoreFileInput.click();
+  }
+
+  restoreFileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const fromLock = restoreFileInput.dataset.fromLock === '1';
+
+    try {
+      const text = await file.text();
+      const dump = JSON.parse(text);
+      if (!dump || dump.app !== 'ledger' || !dump.salt || !dump.verify || !Array.isArray(dump.entries)) {
+        throw new Error('not a valid ledger backup file');
+      }
+
+      await idbClearAll(STORE_ENTRIES);
+      await idbClearAll(STORE_META);
+      await idbPut(STORE_META, { key: 'salt', value: dump.salt });
+      await idbPut(STORE_META, { key: 'verify', value: dump.verify });
+      for (const row of dump.entries) {
+        await idbPut(STORE_ENTRIES, row);
+      }
+
+      restoreFileInput.value = '';
+
+      if (fromLock) {
+        lockError.textContent = '';
+        lockNote.textContent = 'backup restored. enter the passphrase used for that backup to unlock.';
+        await init();
+      } else {
+        // re-lock and force re-entry of passphrase, since restored data may use a different key
+        lockApp();
+        lockNote.textContent = 'backup restored. enter the passphrase used for that backup to unlock.';
+      }
+    } catch (err) {
+      restoreFileInput.value = '';
+      showModal('import failed', err.message || 'could not read this file as a ledger backup.', [{ label: 'ok' }]);
+    }
+  });
+
+  // ---------- go ----------
+  init();
+})();
+</script>
+</body>
+</html>
