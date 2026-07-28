@@ -451,6 +451,97 @@
 
   .file-input-hidden { display: none; }
 
+  /* ---------- settings view ---------- */
+
+  .settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .settings-title {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 20px;
+  }
+
+  .settings-section {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .settings-section-title {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  .settings-section-desc {
+    font-size: 12px;
+    color: var(--text-faint);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  .settings-stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--text-dim);
+    padding: 6px 0;
+  }
+  .settings-stat-row span:last-child { color: var(--text); }
+
+  .settings-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    outline: none;
+  }
+  .settings-input:focus { border-color: var(--border-focus); }
+
+  .settings-btn {
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-dim);
+    color: var(--text);
+    padding: 9px 16px;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+  }
+  .settings-btn:hover { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .settings-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .settings-btn.danger-btn {
+    background: none;
+    border: 1px solid var(--danger-dim);
+    color: var(--danger);
+  }
+  .settings-btn.danger-btn:hover { background: var(--danger-dim); color: var(--text); }
+
+  .settings-error {
+    color: var(--danger);
+    font-size: 12px;
+    margin-bottom: 10px;
+    min-height: 14px;
+  }
+
+  .settings-success {
+    color: var(--accent);
+    font-size: 12px;
+    margin-bottom: 10px;
+    min-height: 14px;
+  }
+
   @media (max-width: 480px) {
     .app { padding: 20px 16px 60px 16px; }
     .meta-row { flex-direction: column; }
@@ -494,6 +585,7 @@
         <span class="export-status" id="exportStatus"></span>
         <button class="icon-btn" id="exportBtn">export</button>
         <button class="icon-btn" id="importBtn">import</button>
+        <button class="icon-btn" id="settingsBtn">settings</button>
         <button class="icon-btn danger" id="lockBtn">lock</button>
       </div>
     </div>
@@ -538,6 +630,47 @@
     <div class="save-status" id="saveStatus"></div>
   </div>
 
+  <!-- SETTINGS VIEW -->
+  <div id="settingsView" class="hidden">
+    <div class="settings-header">
+      <button class="back-btn" id="settingsBackBtn">&larr; back</button>
+      <div class="settings-title">settings</div>
+      <div style="width: 40px;"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">encryption</div>
+      <div class="settings-stat-row"><span>cipher</span><span>AES-256-GCM</span></div>
+      <div class="settings-stat-row"><span>key derivation</span><span>PBKDF2-SHA256, 650,000 iterations</span></div>
+      <div class="settings-stat-row"><span>entries verified this session</span><span id="statVerified">—</span></div>
+      <div class="settings-section-desc" id="cryptoStatusNote" style="margin-top: 12px; margin-bottom: 0;"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">storage</div>
+      <div class="settings-stat-row"><span>entries</span><span id="statEntryCount">—</span></div>
+      <div class="settings-stat-row"><span>approx. size</span><span id="statSize">—</span></div>
+      <div class="settings-stat-row"><span>last export</span><span id="statLastExport">—</span></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">change passphrase</div>
+      <div class="settings-section-desc">re-encrypts every entry with a new key. this can take a moment if you have many entries. do not close this tab while it runs.</div>
+      <div class="settings-error" id="passChangeError"></div>
+      <div class="settings-success" id="passChangeSuccess"></div>
+      <input type="password" class="settings-input" id="currentPassInput" placeholder="current passphrase" autocomplete="off" />
+      <input type="password" class="settings-input" id="newPassInput" placeholder="new passphrase" autocomplete="off" />
+      <input type="password" class="settings-input" id="newPassConfirmInput" placeholder="confirm new passphrase" autocomplete="off" />
+      <button class="settings-btn" id="changePassBtn">change passphrase</button>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">erase everything</div>
+      <div class="settings-section-desc">permanently deletes all entries from this browser. export a backup first if you want to keep anything.</div>
+      <button class="settings-btn danger-btn" id="eraseAllBtn">erase all entries</button>
+    </div>
+  </div>
+
 </div>
 
 <!-- ===== MODAL ===== -->
@@ -566,6 +699,7 @@
   let entries = []; // decrypted, in-memory: {id, title, body, mood, tags, createdAt, updatedAt}
   let currentEntryId = null;
   let autosaveTimer = null;
+  let sessionDecryptStats = { verified: 0, failed: 0 };
 
   // ---------- utility: encoding ----------
   const enc = new TextEncoder();
@@ -700,6 +834,7 @@
   const app = $('app');
   const listView = $('listView');
   const editorView = $('editorView');
+  const settingsView = $('settingsView');
   const entryList = $('entryList');
   const emptyState = $('emptyState');
   const searchInput = $('searchInput');
@@ -721,6 +856,21 @@
   const modalTitle = $('modalTitle');
   const modalBody = $('modalBody');
   const modalActions = $('modalActions');
+
+  const settingsBtn = $('settingsBtn');
+  const settingsBackBtn = $('settingsBackBtn');
+  const statEntryCount = $('statEntryCount');
+  const statSize = $('statSize');
+  const statLastExport = $('statLastExport');
+  const statVerified = $('statVerified');
+  const cryptoStatusNote = $('cryptoStatusNote');
+  const currentPassInput = $('currentPassInput');
+  const newPassInput = $('newPassInput');
+  const newPassConfirmInput = $('newPassConfirmInput');
+  const changePassBtn = $('changePassBtn');
+  const passChangeError = $('passChangeError');
+  const passChangeSuccess = $('passChangeSuccess');
+  const eraseAllBtn = $('eraseAllBtn');
 
   let isSetupMode = false;
 
@@ -790,6 +940,7 @@
     await idbPut(STORE_META, { key: 'verify', value: verifyPayload });
 
     entries = [];
+    sessionDecryptStats = { verified: 0, failed: 0 };
     enterApp();
   }
 
@@ -807,12 +958,15 @@
 
       const rows = await idbGetAll(STORE_ENTRIES);
       entries = [];
+      sessionDecryptStats = { verified: 0, failed: 0 };
       for (const row of rows) {
         try {
           const decrypted = await decryptJson(row.payload);
           entries.push(Object.assign({ id: row.id }, decrypted));
+          sessionDecryptStats.verified++;
         } catch (e) {
           console.error('failed to decrypt entry', row.id, e);
+          sessionDecryptStats.failed++;
         }
       }
       enterApp();
@@ -964,7 +1118,11 @@
   searchInput.addEventListener('input', renderList);
 
   // ---------- editor ----------
-  function openEntry(id) {
+  async function openEntry(id) {
+    if (currentEntryId && currentEntryId !== id) {
+      await flushSave(true);
+    }
+    clearTimeout(autosaveTimer);
     currentEntryId = id;
     const entry = entries.find(e => e.id === id);
     entryTitle.value = entry.title || '';
@@ -975,7 +1133,11 @@
     showEditor();
   }
 
-  function newEntry() {
+  async function newEntry() {
+    if (currentEntryId) {
+      await flushSave(true);
+    }
+    clearTimeout(autosaveTimer);
     const now = Date.now();
     const entry = { id: genId(), title: '', body: '', mood: '', tags: [], createdAt: now, updatedAt: now };
     entries.push(entry);
@@ -996,9 +1158,48 @@
 
   function showList() {
     editorView.classList.add('hidden');
+    settingsView.classList.add('hidden');
     listView.classList.remove('hidden');
     renderList();
   }
+
+  async function showSettings() {
+    listView.classList.add('hidden');
+    editorView.classList.add('hidden');
+    settingsView.classList.remove('hidden');
+    passChangeError.textContent = '';
+    passChangeSuccess.textContent = '';
+    currentPassInput.value = '';
+    newPassInput.value = '';
+    newPassConfirmInput.value = '';
+    await renderSettingsStats();
+  }
+
+  async function renderSettingsStats() {
+    statEntryCount.textContent = entries.length;
+    const rows = await idbGetAll(STORE_ENTRIES);
+    const bytes = rows.reduce((sum, r) => sum + JSON.stringify(r).length, 0);
+    statSize.textContent = bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
+    const lastExportRecord = await idbGet(STORE_META, 'lastExport');
+    statLastExport.textContent = lastExportRecord && lastExportRecord.value
+      ? new Date(lastExportRecord.value).toLocaleString()
+      : 'never';
+
+    const total = sessionDecryptStats.verified + sessionDecryptStats.failed;
+    if (total === 0) {
+      statVerified.textContent = 'n/a, no entries yet';
+      cryptoStatusNote.textContent = 'AES-GCM includes built-in tamper detection: an entry only decrypts if both the key and ciphertext are intact. "verified" below reflects entries that actually decrypted successfully on this unlock, not just a stored count.';
+    } else if (sessionDecryptStats.failed === 0) {
+      statVerified.textContent = `${sessionDecryptStats.verified} / ${total}`;
+      cryptoStatusNote.textContent = 'every entry decrypted and passed its AES-GCM authentication check on this unlock. that means the ciphertext was not altered and the key used was correct.';
+    } else {
+      statVerified.textContent = `${sessionDecryptStats.verified} / ${total} (${sessionDecryptStats.failed} failed)`;
+      cryptoStatusNote.textContent = `${sessionDecryptStats.failed} entr${sessionDecryptStats.failed === 1 ? 'y' : 'ies'} failed decryption on unlock, meaning that entry's ciphertext is corrupted or was written with a different key. it still exists in storage but could not be read. check the browser console for the affected entry id.`;
+    }
+  }
+
+  settingsBtn.addEventListener('click', showSettings);
+  settingsBackBtn.addEventListener('click', showList);
 
   newEntryBtn.addEventListener('click', newEntry);
   backBtn.addEventListener('click', () => { flushSave(true); showList(); });
@@ -1051,6 +1252,98 @@
           entries = entries.filter(e => e.id !== currentEntryId);
           currentEntryId = null;
           showList();
+        }}
+      ]
+    );
+  });
+
+  // ---------- change passphrase ----------
+  changePassBtn.addEventListener('click', async () => {
+    passChangeError.textContent = '';
+    passChangeSuccess.textContent = '';
+
+    const current = currentPassInput.value;
+    const next = newPassInput.value;
+    const nextConfirm = newPassConfirmInput.value;
+
+    if (!current) { passChangeError.textContent = 'enter your current passphrase.'; return; }
+    if (next.length < 8) { passChangeError.textContent = 'new passphrase must be at least 8 characters.'; return; }
+    if (next !== nextConfirm) { passChangeError.textContent = 'new passphrases do not match.'; return; }
+
+    changePassBtn.disabled = true;
+    changePassBtn.textContent = 'verifying…';
+
+    try {
+      // verify current passphrase against the currently active key material
+      const saltRecord = await idbGet(STORE_META, 'salt');
+      const verifyRecord = await idbGet(STORE_META, 'verify');
+      const currentKeyCheck = await deriveKey(current, saltRecord.value);
+      const savedKey = cryptoKey;
+      cryptoKey = currentKeyCheck;
+      try {
+        await decryptJson(verifyRecord.value);
+      } catch (e) {
+        cryptoKey = savedKey;
+        passChangeError.textContent = 'current passphrase is incorrect.';
+        changePassBtn.disabled = false;
+        changePassBtn.textContent = 'change passphrase';
+        return;
+      }
+
+      changePassBtn.textContent = 're-encrypting…';
+
+      // derive new key + salt, re-encrypt every entry, build full new dataset before committing anything
+      const newSalt = randomSaltB64();
+      const newKey = await deriveKey(next, newSalt);
+
+      const rows = await idbGetAll(STORE_ENTRIES);
+      const reencrypted = [];
+      cryptoKey = currentKeyCheck; // ensure decrypts use verified current key
+      for (const row of rows) {
+        const decrypted = await decryptJson(row.payload);
+        cryptoKey = newKey;
+        const payload = await encryptJson(decrypted);
+        reencrypted.push({ id: row.id, payload });
+        cryptoKey = currentKeyCheck;
+      }
+
+      cryptoKey = newKey;
+      const newVerify = await encryptJson({ check: 'ledger-ok' });
+
+      // commit: only after everything above succeeded
+      await idbPut(STORE_META, { key: 'salt', value: newSalt });
+      await idbPut(STORE_META, { key: 'verify', value: newVerify });
+      for (const row of reencrypted) {
+        await idbPut(STORE_ENTRIES, row);
+      }
+
+      currentPassInput.value = '';
+      newPassInput.value = '';
+      newPassConfirmInput.value = '';
+      sessionDecryptStats = { verified: reencrypted.length, failed: 0 };
+      passChangeSuccess.textContent = 'passphrase changed. export a fresh backup, the old backup file no longer matches this passphrase.';
+      await renderSettingsStats();
+    } catch (e) {
+      passChangeError.textContent = 'something went wrong, passphrase was not changed: ' + e.message;
+    } finally {
+      changePassBtn.disabled = false;
+      changePassBtn.textContent = 'change passphrase';
+    }
+  });
+
+  // ---------- erase everything ----------
+  eraseAllBtn.addEventListener('click', () => {
+    showModal(
+      'erase all entries?',
+      'this permanently deletes every entry in this browser. your passphrase stays the same. this cannot be undone. export a backup first if you want to keep anything.',
+      [
+        { label: 'cancel' },
+        { label: 'erase everything', danger: true, onClick: async () => {
+          const rows = await idbGetAll(STORE_ENTRIES);
+          for (const row of rows) await idbDelete(STORE_ENTRIES, row.id);
+          entries = [];
+          await renderSettingsStats();
+          showModal('done', 'all entries have been erased.', [{ label: 'ok' }]);
         }}
       ]
     );
@@ -1138,6 +1431,18 @@
     } catch (err) {
       restoreFileInput.value = '';
       showModal('import failed', err.message || 'could not read this file as a ledger backup.', [{ label: 'ok' }]);
+    }
+  });
+
+  // ---------- unsaved-changes guard ----------
+  // beforeunload cannot reliably wait on async work (IndexedDB writes, WebCrypto
+  // encryption are both promise-based), so this warns instead of silently
+  // "saving" on the way out, since a promised save that can't be guaranteed
+  // to finish is worse than an honest warning.
+  window.addEventListener('beforeunload', (e) => {
+    if (autosaveTimer) {
+      e.preventDefault();
+      e.returnValue = '';
     }
   });
 
