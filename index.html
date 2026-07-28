@@ -812,8 +812,6 @@
       <div class="app-title" id="appTitle">ledger</div>
       <div class="header-actions">
         <span class="export-status" id="exportStatus"></span>
-        <button class="icon-btn" id="exportBtn">export</button>
-        <button class="icon-btn" id="importBtn">import</button>
         <button class="icon-btn" id="settingsBtn">settings</button>
         <button class="icon-btn danger" id="lockBtn">lock</button>
       </div>
@@ -893,6 +891,13 @@
       <button class="back-btn" id="settingsBackBtn">&larr; back</button>
       <div class="settings-title">settings</div>
       <div style="width: 40px;"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">backup</div>
+      <div class="settings-section-desc">export downloads an encrypted backup of this notebook. import restores a backup into this notebook, replacing what's currently here. last export shown below under storage.</div>
+      <button class="settings-btn" id="exportBtn" style="margin-right: 8px;">export this notebook</button>
+      <button class="settings-btn" id="importBtn">import a backup</button>
     </div>
 
     <div class="settings-section">
@@ -2394,6 +2399,7 @@
 
     await idbPut(STORE_META, { key: 'lastExport', value: Date.now() });
     renderExportStatus();
+    await renderSettingsStats();
   });
 
   importBtn.addEventListener('click', () => {
