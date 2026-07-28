@@ -896,6 +896,17 @@
     </div>
 
     <div class="settings-section">
+      <div class="settings-section-title">auto-lock</div>
+      <div class="settings-section-desc">automatically locks this notebook after a period of inactivity, so it doesn't stay decrypted if you walk away. applies to all notebooks on this browser.</div>
+      <select class="settings-input" id="autoLockSelect">
+        <option value="0">never</option>
+        <option value="5">after 5 minutes</option>
+        <option value="15">after 15 minutes</option>
+        <option value="30">after 30 minutes</option>
+      </select>
+    </div>
+
+    <div class="settings-section">
       <div class="settings-section-title">encryption</div>
       <div class="settings-stat-row"><span>cipher</span><span>AES-256-GCM</span></div>
       <div class="settings-stat-row"><span>key derivation</span><span>PBKDF2-SHA256, 650,000 iterations</span></div>
@@ -944,6 +955,7 @@
   <div class="modal">
     <div class="modal-title" id="modalTitle"></div>
     <div class="modal-body" id="modalBody"></div>
+    <input type="text" class="lock-input hidden" id="modalInput" style="margin-top: 4px; margin-bottom: 4px;" />
     <div class="modal-actions" id="modalActions"></div>
   </div>
 </div>
@@ -964,6 +976,7 @@
   const PBKDF2_ITERATIONS = 650000;
   const STALE_EXPORT_DAYS = 7;
   const DEFAULT_HISTORY_LIMIT = 15;
+  const AUTO_LOCK_STORAGE_KEY = 'ledger_autolock_minutes';
   const MAX_RECOMMENDED_HISTORY_LIMIT = 30;
 
   let registryDb = null;
@@ -1208,6 +1221,7 @@
   const historyList = $('historyList');
   const historyEmptyState = $('historyEmptyState');
   const historyLimitInput = $('historyLimitInput');
+  const autoLockSelect = $('autoLockSelect');
   const saveHistoryLimitBtn = $('saveHistoryLimitBtn');
   const historyLimitWarning = $('historyLimitWarning');
   const statVersionCount = $('statVersionCount');
@@ -1220,6 +1234,7 @@
   const modalTitle = $('modalTitle');
   const modalBody = $('modalBody');
   const modalActions = $('modalActions');
+  const modalInput = $('modalInput');
 
   const settingsBtn = $('settingsBtn');
   const settingsBackBtn = $('settingsBackBtn');
@@ -1242,6 +1257,7 @@
   function showModal(title, body, actions) {
     modalTitle.textContent = title;
     modalBody.textContent = body;
+    modalInput.classList.add('hidden');
     modalActions.innerHTML = '';
     actions.forEach(a => {
       const btn = document.createElement('button');
@@ -1253,6 +1269,41 @@
     modalOverlay.classList.remove('hidden');
   }
   function hideModal() { modalOverlay.classList.add('hidden'); }
+
+  // shows a modal with a text input, resolves with the trimmed value or null if cancelled.
+  function showPrompt(title, body, placeholder, defaultValue) {
+    return new Promise((resolve) => {
+      modalTitle.textContent = title;
+      modalBody.textContent = body;
+      modalInput.classList.remove('hidden');
+      modalInput.value = defaultValue || '';
+      modalInput.placeholder = placeholder || '';
+      modalActions.innerHTML = '';
+
+      const submit = () => {
+        const val = modalInput.value.trim();
+        hideModal();
+        resolve(val || null);
+      };
+      const cancel = () => { hideModal(); resolve(null); };
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'modal-btn';
+      cancelBtn.textContent = 'cancel';
+      cancelBtn.onclick = cancel;
+
+      const okBtn = document.createElement('button');
+      okBtn.className = 'modal-btn';
+      okBtn.textContent = 'ok';
+      okBtn.onclick = submit;
+
+      modalActions.appendChild(cancelBtn);
+      modalActions.appendChild(okBtn);
+      modalOverlay.classList.remove('hidden');
+      modalInput.onkeydown = (e) => { if (e.key === 'Enter') submit(); };
+      setTimeout(() => modalInput.focus(), 50);
+    });
+  }
 
   // ---------- vault picker ----------
   async function init() {
@@ -1347,7 +1398,7 @@
       return;
     }
 
-    const label = (prompt('name this notebook (e.g. "personal", "work"):') || '').trim();
+    const label = await showPrompt('name this notebook', 'this name is only shown here on this browser, to tell your notebooks apart.', 'e.g. "personal", "work"');
     if (!label) {
       lockError.textContent = 'a notebook needs a name to tell it apart from others.';
       return;
@@ -1442,9 +1493,11 @@
     passConfirmInput.value = '';
     renderList();
     renderExportStatus();
+    startAutoLockTracking();
   }
 
   async function lockApp() {
+    stopAutoLockTracking();
     clearTimeout(autosaveTimer);
     if (currentEntryId) {
       try { await flushSave(true); } catch (e) { console.error('flush on lock failed', e); }
@@ -1463,6 +1516,44 @@
   }
 
   lockBtn.addEventListener('click', lockApp);
+
+  // ---------- auto-lock ----------
+  let autoLockTimer = null;
+  const AUTO_LOCK_ACTIVITY_EVENTS = ['mousedown', 'keydown', 'touchstart', 'scroll'];
+
+  function getAutoLockMinutes() {
+    const raw = localStorage.getItem(AUTO_LOCK_STORAGE_KEY);
+    const n = raw === null ? 15 : parseInt(raw, 10);
+    return Number.isFinite(n) ? n : 15;
+  }
+
+  function setAutoLockMinutes(n) {
+    localStorage.setItem(AUTO_LOCK_STORAGE_KEY, String(n));
+  }
+
+  function resetAutoLockTimer() {
+    clearTimeout(autoLockTimer);
+    const minutes = getAutoLockMinutes();
+    if (minutes <= 0) return; // 'never'
+    autoLockTimer = setTimeout(() => {
+      if (app.classList.contains('active')) lockApp();
+    }, minutes * 60 * 1000);
+  }
+
+  function startAutoLockTracking() {
+    AUTO_LOCK_ACTIVITY_EVENTS.forEach(ev => document.addEventListener(ev, resetAutoLockTimer));
+    resetAutoLockTimer();
+  }
+
+  function stopAutoLockTracking() {
+    clearTimeout(autoLockTimer);
+    AUTO_LOCK_ACTIVITY_EVENTS.forEach(ev => document.removeEventListener(ev, resetAutoLockTimer));
+  }
+
+  autoLockSelect.addEventListener('change', () => {
+    setAutoLockMinutes(parseInt(autoLockSelect.value, 10));
+    resetAutoLockTimer();
+  });
 
   // ---------- list rendering ----------
   function formatDate(ts) {
@@ -1751,6 +1842,7 @@
     const limit = await getHistoryLimit();
     historyLimitInput.value = limit;
     historyLimitWarning.textContent = '';
+    autoLockSelect.value = String(getAutoLockMinutes());
     await renderSettingsStats();
   }
 
@@ -2338,7 +2430,7 @@
       restoreFileInput.value = '';
 
       if (mode === 'new-vault') {
-        const label = (prompt('name this notebook (e.g. "personal", "work"):', dump.label || '') || '').trim();
+        const label = await showPrompt('name this notebook', 'this backup was labeled "' + (dump.label || 'unnamed') + '" when exported. you can rename it here.', 'e.g. "personal", "work"', dump.label || '');
         if (!label) return;
 
         const vaultId = genVaultId();
