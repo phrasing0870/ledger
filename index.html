@@ -616,12 +616,8 @@
 
     <div class="meta-row">
       <div class="meta-field">
-        <label class="meta-field-label">mood (optional)</label>
-        <input type="text" class="meta-input" id="entryMood" placeholder="e.g. steady, tense, low" />
-      </div>
-      <div class="meta-field">
         <label class="meta-field-label">tags (optional, comma separated)</label>
-        <input type="text" class="meta-input" id="entryTags" placeholder="e.g. sprosty, gym" />
+        <input type="text" class="meta-input" id="entryTags" placeholder="e.g. work, ideas, travel" />
       </div>
     </div>
 
@@ -696,7 +692,7 @@
 
   let db = null;
   let cryptoKey = null;
-  let entries = []; // decrypted, in-memory: {id, title, body, mood, tags, createdAt, updatedAt}
+  let entries = []; // decrypted, in-memory: {id, title, body, tags, createdAt, updatedAt}
   let currentEntryId = null;
   let autosaveTimer = null;
   let sessionDecryptStats = { verified: 0, failed: 0 };
@@ -847,7 +843,6 @@
   const backBtn = $('backBtn');
   const deleteEntryBtn = $('deleteEntryBtn');
   const entryTitle = $('entryTitle');
-  const entryMood = $('entryMood');
   const entryTags = $('entryTags');
   const entryBody = $('entryBody');
   const saveStatus = $('saveStatus');
@@ -1046,7 +1041,6 @@
       ? sorted.filter(e =>
           (e.title || '').toLowerCase().includes(query) ||
           (e.body || '').toLowerCase().includes(query) ||
-          (e.mood || '').toLowerCase().includes(query) ||
           (e.tags || []).some(t => t.toLowerCase().includes(query))
         )
       : sorted;
@@ -1093,16 +1087,10 @@
         row.appendChild(preview);
       }
 
-      if (entry.mood || (entry.tags && entry.tags.length)) {
+      if (entry.tags && entry.tags.length) {
         const metaRow = document.createElement('div');
         metaRow.className = 'entry-row-meta';
-        if (entry.mood) {
-          const chip = document.createElement('span');
-          chip.className = 'meta-chip';
-          chip.textContent = entry.mood;
-          metaRow.appendChild(chip);
-        }
-        (entry.tags || []).forEach(t => {
+        entry.tags.forEach(t => {
           const chip = document.createElement('span');
           chip.className = 'meta-chip';
           chip.textContent = t;
@@ -1126,7 +1114,6 @@
     currentEntryId = id;
     const entry = entries.find(e => e.id === id);
     entryTitle.value = entry.title || '';
-    entryMood.value = entry.mood || '';
     entryTags.value = (entry.tags || []).join(', ');
     entryBody.value = entry.body || '';
     saveStatus.textContent = '';
@@ -1139,11 +1126,10 @@
     }
     clearTimeout(autosaveTimer);
     const now = Date.now();
-    const entry = { id: genId(), title: '', body: '', mood: '', tags: [], createdAt: now, updatedAt: now };
+    const entry = { id: genId(), title: '', body: '', tags: [], createdAt: now, updatedAt: now };
     entries.push(entry);
     currentEntryId = entry.id;
     entryTitle.value = '';
-    entryMood.value = '';
     entryTags.value = '';
     entryBody.value = '';
     saveStatus.textContent = '';
@@ -1218,25 +1204,24 @@
 
     entry.title = entryTitle.value;
     entry.body = entryBody.value;
-    entry.mood = entryMood.value;
     entry.tags = entryTags.value.split(',').map(t => t.trim()).filter(Boolean);
     entry.updatedAt = Date.now();
 
     // don't persist fully empty entries
-    if (!entry.title && !entry.body && !entry.mood && entry.tags.length === 0) {
+    if (!entry.title && !entry.body && entry.tags.length === 0) {
       saveStatus.textContent = '';
       return;
     }
 
     const payload = await encryptJson({
-      title: entry.title, body: entry.body, mood: entry.mood, tags: entry.tags,
+      title: entry.title, body: entry.body, tags: entry.tags,
       createdAt: entry.createdAt, updatedAt: entry.updatedAt
     });
     await idbPut(STORE_ENTRIES, { id: entry.id, payload });
     saveStatus.textContent = 'saved ' + new Date(entry.updatedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   }
 
-  [entryTitle, entryMood, entryTags, entryBody].forEach(el => {
+  [entryTitle, entryTags, entryBody].forEach(el => {
     el.addEventListener('input', scheduleSave);
   });
 
