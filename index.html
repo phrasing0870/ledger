@@ -16,6 +16,8 @@
     --text-faint: #45484d;
     --accent: #8a9a8e;
     --accent-dim: #4f5952;
+    --accent-interactive: #9fc4ab;
+    --accent-glow: rgba(159, 196, 171, 0.35);
     --danger: #a8615a;
     --danger-dim: #5c3733;
     --mono: 'SF Mono', 'JetBrains Mono', Consolas, monospace;
@@ -35,6 +37,17 @@
   }
 
   ::selection { background: var(--accent-dim); color: var(--text); }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
 
   button {
     font-family: var(--mono);
@@ -115,7 +128,7 @@
     transition: all 0.15s ease;
   }
 
-  .lock-btn:hover { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .lock-btn:hover { background: var(--accent-interactive); border-color: var(--accent-interactive); color: var(--bg); }
 
   .lock-note {
     margin-top: 18px;
@@ -203,7 +216,109 @@
   .list-toolbar {
     display: flex;
     gap: 10px;
-    margin: 24px 0;
+    margin: 24px 0 12px 0;
+  }
+
+  .view-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+
+  .view-tab {
+    background: none;
+    border: 1px solid transparent;
+    color: var(--text-faint);
+    padding: 6px 12px;
+    border-radius: 3px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+  }
+  .view-tab:hover { color: var(--text-dim); }
+  .view-tab.active {
+    color: var(--text);
+    border-color: var(--border);
+    background: var(--bg-raised);
+  }
+  .view-tab .tab-count {
+    color: inherit;
+    opacity: 0.6;
+    margin-left: 4px;
+  }
+
+  .search-scope-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: -4px 0 16px 0;
+  }
+  .search-scope-row label {
+    font-size: 11px;
+    color: var(--text-faint);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .search-scope-row input[type="checkbox"] {
+    accent-color: var(--accent-interactive);
+  }
+
+  .entry-row-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .entry-row-action-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+  }
+  .entry-row-action-btn:hover { border-color: var(--border-focus); color: var(--text); }
+  .entry-row-action-btn.danger:hover { border-color: var(--danger-dim); color: var(--danger); }
+
+  .history-row {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+  }
+  .history-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .history-row-date {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .history-row-title {
+    font-family: var(--serif);
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .history-row-preview {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    margin-bottom: 10px;
   }
 
   .search-input {
@@ -227,7 +342,7 @@
     white-space: nowrap;
     transition: all 0.15s ease;
   }
-  .new-entry-btn:hover { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .new-entry-btn:hover { background: var(--accent-interactive); border-color: var(--accent-interactive); color: var(--bg); }
 
   .entry-list {
     display: flex;
@@ -239,12 +354,15 @@
     background: var(--bg-raised);
     border: 1px solid transparent;
     border-radius: 3px;
-    padding: 14px 16px;
+    padding: 16px 18px;
     cursor: pointer;
-    transition: all 0.12s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
     margin-bottom: 6px;
   }
-  .entry-row:hover { border-color: var(--border); }
+  .entry-row:hover {
+    border-color: var(--border-focus);
+    background: #171a1f;
+  }
 
   .entry-row-top {
     display: flex;
@@ -451,6 +569,97 @@
 
   .file-input-hidden { display: none; }
 
+  /* ---------- settings view ---------- */
+
+  .settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .settings-title {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 20px;
+  }
+
+  .settings-section {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .settings-section-title {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  .settings-section-desc {
+    font-size: 12px;
+    color: var(--text-faint);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  .settings-stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--text-dim);
+    padding: 6px 0;
+  }
+  .settings-stat-row span:last-child { color: var(--text); }
+
+  .settings-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    outline: none;
+  }
+  .settings-input:focus { border-color: var(--border-focus); }
+
+  .settings-btn {
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-dim);
+    color: var(--text);
+    padding: 9px 16px;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+  }
+  .settings-btn:hover { background: var(--accent-interactive); border-color: var(--accent-interactive); color: var(--bg); }
+  .settings-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .settings-btn.danger-btn {
+    background: none;
+    border: 1px solid var(--danger-dim);
+    color: var(--danger);
+  }
+  .settings-btn.danger-btn:hover { background: var(--danger-dim); color: var(--text); }
+
+  .settings-error {
+    color: var(--danger);
+    font-size: 12px;
+    margin-bottom: 10px;
+    min-height: 14px;
+  }
+
+  .settings-success {
+    color: var(--accent);
+    font-size: 12px;
+    margin-bottom: 10px;
+    min-height: 14px;
+  }
+
   @media (max-width: 480px) {
     .app { padding: 20px 16px 60px 16px; }
     .meta-row { flex-direction: column; }
@@ -494,13 +703,25 @@
         <span class="export-status" id="exportStatus"></span>
         <button class="icon-btn" id="exportBtn">export</button>
         <button class="icon-btn" id="importBtn">import</button>
+        <button class="icon-btn" id="settingsBtn">settings</button>
         <button class="icon-btn danger" id="lockBtn">lock</button>
       </div>
+    </div>
+
+    <div class="view-tabs" id="viewTabs">
+      <button class="view-tab active" id="tabActive" data-view="active">entries<span class="tab-count" id="countActive"></span></button>
+      <button class="view-tab" id="tabArchived" data-view="archived">archived<span class="tab-count" id="countArchived"></span></button>
+      <button class="view-tab" id="tabTrash" data-view="trash">trash<span class="tab-count" id="countTrash"></span></button>
+      <button class="icon-btn danger hidden" id="emptyTrashBtn" style="margin-left: auto;">empty trash</button>
     </div>
 
     <div class="list-toolbar">
       <input type="text" class="search-input" id="searchInput" placeholder="search entries…" />
       <button class="new-entry-btn" id="newEntryBtn">+ new entry</button>
+    </div>
+
+    <div class="search-scope-row hidden" id="searchScopeRow">
+      <label><input type="checkbox" id="includeArchivedSearch" /> include archived in search</label>
     </div>
 
     <div class="entry-list" id="entryList"></div>
@@ -516,7 +737,13 @@
     <div class="editor-header">
       <button class="back-btn" id="backBtn">&larr; back</button>
       <div class="editor-actions">
-        <button class="icon-btn danger" id="deleteEntryBtn">delete</button>
+        <button class="icon-btn" id="historyBtn">history</button>
+        <button class="icon-btn" id="duplicateEntryBtn">duplicate</button>
+        <button class="icon-btn hidden" id="archiveEntryBtn">archive</button>
+        <button class="icon-btn hidden" id="unarchiveEntryBtn">unarchive</button>
+        <button class="icon-btn hidden" id="restoreEntryBtn">restore</button>
+        <button class="icon-btn danger hidden" id="deleteEntryBtn">delete</button>
+        <button class="icon-btn danger hidden" id="deleteForeverBtn">delete forever</button>
       </div>
     </div>
 
@@ -524,18 +751,79 @@
 
     <div class="meta-row">
       <div class="meta-field">
-        <label class="meta-field-label">mood (optional)</label>
-        <input type="text" class="meta-input" id="entryMood" placeholder="e.g. steady, tense, low" />
-      </div>
-      <div class="meta-field">
         <label class="meta-field-label">tags (optional, comma separated)</label>
-        <input type="text" class="meta-input" id="entryTags" placeholder="e.g. sprosty, gym" />
+        <input type="text" class="meta-input" id="entryTags" placeholder="e.g. work, ideas, travel" />
       </div>
     </div>
 
     <textarea class="body-textarea" id="entryBody" placeholder="write…"></textarea>
 
     <div class="save-status" id="saveStatus"></div>
+  </div>
+
+  <!-- HISTORY VIEW -->
+  <div id="historyView" class="hidden">
+    <div class="settings-header">
+      <button class="back-btn" id="historyBackBtn">&larr; back</button>
+      <div class="settings-title">version history</div>
+      <div style="width: 40px;"></div>
+    </div>
+    <div class="settings-section-desc" style="margin-bottom: 16px;">a version is saved automatically before each meaningful change. restoring a version saves your current draft as a version too, so you can always undo a restore.</div>
+    <div id="historyList"></div>
+    <div class="empty-state hidden" id="historyEmptyState">
+      <div class="empty-state-title">no earlier versions</div>
+      <div>versions appear here once you've made and saved an edit.</div>
+    </div>
+  </div>
+
+  <!-- SETTINGS VIEW -->
+  <div id="settingsView" class="hidden">
+    <div class="settings-header">
+      <button class="back-btn" id="settingsBackBtn">&larr; back</button>
+      <div class="settings-title">settings</div>
+      <div style="width: 40px;"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">encryption</div>
+      <div class="settings-stat-row"><span>cipher</span><span>AES-256-GCM</span></div>
+      <div class="settings-stat-row"><span>key derivation</span><span>PBKDF2-SHA256, 650,000 iterations</span></div>
+      <div class="settings-stat-row"><span>entries verified this session</span><span id="statVerified">—</span></div>
+      <div class="settings-section-desc" id="cryptoStatusNote" style="margin-top: 12px; margin-bottom: 0;"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">storage</div>
+      <div class="settings-stat-row"><span>entries (all, incl. archived/trash)</span><span id="statEntryCount">—</span></div>
+      <div class="settings-stat-row"><span>saved versions</span><span id="statVersionCount">—</span></div>
+      <div class="settings-stat-row"><span>approx. size</span><span id="statSize">—</span></div>
+      <div class="settings-stat-row"><span>last export</span><span id="statLastExport">—</span></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">version history</div>
+      <div class="settings-section-desc">a version is saved automatically before each meaningful edit. more versions means more storage used per entry; keeping this low is recommended.</div>
+      <div class="settings-error" id="historyLimitWarning"></div>
+      <input type="number" class="settings-input" id="historyLimitInput" min="1" max="100" />
+      <button class="settings-btn" id="saveHistoryLimitBtn">save limit</button>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">change passphrase</div>
+      <div class="settings-section-desc">re-encrypts every entry with a new key. this can take a moment if you have many entries. do not close this tab while it runs.</div>
+      <div class="settings-error" id="passChangeError"></div>
+      <div class="settings-success" id="passChangeSuccess"></div>
+      <input type="password" class="settings-input" id="currentPassInput" placeholder="current passphrase" autocomplete="off" />
+      <input type="password" class="settings-input" id="newPassInput" placeholder="new passphrase" autocomplete="off" />
+      <input type="password" class="settings-input" id="newPassConfirmInput" placeholder="confirm new passphrase" autocomplete="off" />
+      <button class="settings-btn" id="changePassBtn">change passphrase</button>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">erase everything</div>
+      <div class="settings-section-desc">permanently deletes all entries from this browser. export a backup first if you want to keep anything.</div>
+      <button class="settings-btn danger-btn" id="eraseAllBtn">erase all entries</button>
+    </div>
   </div>
 
 </div>
@@ -555,17 +843,22 @@
 
   // ---------- constants ----------
   const DB_NAME = 'ledger_db';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   const STORE_ENTRIES = 'entries';
   const STORE_META = 'meta';
+  const STORE_VERSIONS = 'versions';
   const PBKDF2_ITERATIONS = 650000;
   const STALE_EXPORT_DAYS = 7;
+  const DEFAULT_HISTORY_LIMIT = 15;
+  const MAX_RECOMMENDED_HISTORY_LIMIT = 30;
 
   let db = null;
   let cryptoKey = null;
-  let entries = []; // decrypted, in-memory: {id, title, body, mood, tags, createdAt, updatedAt}
+  let entries = []; // decrypted, in-memory: {id, title, body, tags, createdAt, updatedAt, archivedAt, deletedAt}
   let currentEntryId = null;
   let autosaveTimer = null;
+  let sessionDecryptStats = { verified: 0, failed: 0 };
+  let currentView = 'active'; // 'active' | 'archived' | 'trash'
 
   // ---------- utility: encoding ----------
   const enc = new TextEncoder();
@@ -596,6 +889,10 @@
         if (!_db.objectStoreNames.contains(STORE_META)) {
           _db.createObjectStore(STORE_META, { keyPath: 'key' });
         }
+        if (!_db.objectStoreNames.contains(STORE_VERSIONS)) {
+          const versionsStore = _db.createObjectStore(STORE_VERSIONS, { keyPath: 'id' });
+          versionsStore.createIndex('entryId', 'entryId', { unique: false });
+        }
       };
       req.onsuccess = (e) => resolve(e.target.result);
       req.onerror = (e) => reject(e.target.error);
@@ -615,6 +912,15 @@
     return new Promise((resolve, reject) => {
       const tx = db.transaction(store, 'readonly');
       const req = tx.objectStore(store).getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  function idbGetAllByIndex(store, indexName, value) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(store, 'readonly');
+      const req = tx.objectStore(store).index(indexName).getAll(value);
       req.onsuccess = () => resolve(req.result);
       req.onerror = (e) => reject(e.target.error);
     });
@@ -700,10 +1006,21 @@
   const app = $('app');
   const listView = $('listView');
   const editorView = $('editorView');
+  const settingsView = $('settingsView');
+  const historyView = $('historyView');
   const entryList = $('entryList');
   const emptyState = $('emptyState');
   const searchInput = $('searchInput');
   const newEntryBtn = $('newEntryBtn');
+  const tabActive = $('tabActive');
+  const tabArchived = $('tabArchived');
+  const tabTrash = $('tabTrash');
+  const countActive = $('countActive');
+  const countArchived = $('countArchived');
+  const countTrash = $('countTrash');
+  const searchScopeRow = $('searchScopeRow');
+  const includeArchivedSearch = $('includeArchivedSearch');
+  const emptyTrashBtn = $('emptyTrashBtn');
   const exportBtn = $('exportBtn');
   const exportStatus = $('exportStatus');
   const importBtn = $('importBtn');
@@ -711,8 +1028,20 @@
 
   const backBtn = $('backBtn');
   const deleteEntryBtn = $('deleteEntryBtn');
+  const archiveEntryBtn = $('archiveEntryBtn');
+  const unarchiveEntryBtn = $('unarchiveEntryBtn');
+  const restoreEntryBtn = $('restoreEntryBtn');
+  const deleteForeverBtn = $('deleteForeverBtn');
+  const historyBtn = $('historyBtn');
+  const duplicateEntryBtn = $('duplicateEntryBtn');
+  const historyBackBtn = $('historyBackBtn');
+  const historyList = $('historyList');
+  const historyEmptyState = $('historyEmptyState');
+  const historyLimitInput = $('historyLimitInput');
+  const saveHistoryLimitBtn = $('saveHistoryLimitBtn');
+  const historyLimitWarning = $('historyLimitWarning');
+  const statVersionCount = $('statVersionCount');
   const entryTitle = $('entryTitle');
-  const entryMood = $('entryMood');
   const entryTags = $('entryTags');
   const entryBody = $('entryBody');
   const saveStatus = $('saveStatus');
@@ -721,6 +1050,21 @@
   const modalTitle = $('modalTitle');
   const modalBody = $('modalBody');
   const modalActions = $('modalActions');
+
+  const settingsBtn = $('settingsBtn');
+  const settingsBackBtn = $('settingsBackBtn');
+  const statEntryCount = $('statEntryCount');
+  const statSize = $('statSize');
+  const statLastExport = $('statLastExport');
+  const statVerified = $('statVerified');
+  const cryptoStatusNote = $('cryptoStatusNote');
+  const currentPassInput = $('currentPassInput');
+  const newPassInput = $('newPassInput');
+  const newPassConfirmInput = $('newPassConfirmInput');
+  const changePassBtn = $('changePassBtn');
+  const passChangeError = $('passChangeError');
+  const passChangeSuccess = $('passChangeSuccess');
+  const eraseAllBtn = $('eraseAllBtn');
 
   let isSetupMode = false;
 
@@ -790,6 +1134,7 @@
     await idbPut(STORE_META, { key: 'verify', value: verifyPayload });
 
     entries = [];
+    sessionDecryptStats = { verified: 0, failed: 0 };
     enterApp();
   }
 
@@ -807,12 +1152,15 @@
 
       const rows = await idbGetAll(STORE_ENTRIES);
       entries = [];
+      sessionDecryptStats = { verified: 0, failed: 0 };
       for (const row of rows) {
         try {
           const decrypted = await decryptJson(row.payload);
-          entries.push(Object.assign({ id: row.id }, decrypted));
+          entries.push(Object.assign({ archivedAt: null, deletedAt: null }, decrypted, { id: row.id }));
+          sessionDecryptStats.verified++;
         } catch (e) {
           console.error('failed to decrypt entry', row.id, e);
+          sessionDecryptStats.failed++;
         }
       }
       enterApp();
@@ -842,6 +1190,12 @@
     cryptoKey = null;
     entries = [];
     currentEntryId = null;
+    currentView = 'active';
+    tabActive.classList.add('active');
+    tabArchived.classList.remove('active');
+    tabTrash.classList.remove('active');
+    searchScopeRow.classList.remove('hidden');
+    emptyTrashBtn.classList.add('hidden');
     app.classList.remove('active');
     lockScreen.style.display = 'flex';
     passInput.value = '';
@@ -885,14 +1239,55 @@
     }
   }
 
+  function entryStatus(e) {
+    if (e.deletedAt) return 'trash';
+    if (e.archivedAt) return 'archived';
+    return 'active';
+  }
+
+  function updateTabCounts() {
+    const counts = { active: 0, archived: 0, trash: 0 };
+    entries.forEach(e => counts[entryStatus(e)]++);
+    countActive.textContent = counts.active ? ` (${counts.active})` : '';
+    countArchived.textContent = counts.archived ? ` (${counts.archived})` : '';
+    countTrash.textContent = counts.trash ? ` (${counts.trash})` : '';
+  }
+
+  function switchView(view) {
+    currentView = view;
+    [tabActive, tabArchived, tabTrash].forEach(tab => tab.classList.remove('active'));
+    ({ active: tabActive, archived: tabArchived, trash: tabTrash })[view].classList.add('active');
+    searchScopeRow.classList.toggle('hidden', view !== 'active');
+    emptyTrashBtn.classList.toggle('hidden', view !== 'trash');
+    renderList();
+  }
+
+  tabActive.addEventListener('click', () => switchView('active'));
+  tabArchived.addEventListener('click', () => switchView('archived'));
+  tabTrash.addEventListener('click', () => switchView('trash'));
+  includeArchivedSearch.addEventListener('change', renderList);
+
   function renderList() {
+    updateTabCounts();
     const query = searchInput.value.trim().toLowerCase();
-    const sorted = [...entries].sort((a, b) => b.updatedAt - a.updatedAt);
+    const includeArchived = includeArchivedSearch.checked;
+
+    let scoped;
+    if (query && currentView === 'active') {
+      // searching from the active view can optionally reach into archived too, but never trash
+      scoped = entries.filter(e => {
+        const status = entryStatus(e);
+        return status === 'active' || (includeArchived && status === 'archived');
+      });
+    } else {
+      scoped = entries.filter(e => entryStatus(e) === currentView);
+    }
+
+    const sorted = [...scoped].sort((a, b) => b.updatedAt - a.updatedAt);
     const filtered = query
       ? sorted.filter(e =>
-          (e.title || '').toLowerCase().includes(query) ||
+          (e.title || 'untitled entry').toLowerCase().includes(query) ||
           (e.body || '').toLowerCase().includes(query) ||
-          (e.mood || '').toLowerCase().includes(query) ||
           (e.tags || []).some(t => t.toLowerCase().includes(query))
         )
       : sorted;
@@ -901,12 +1296,20 @@
 
     if (filtered.length === 0) {
       emptyState.classList.remove('hidden');
+      const title = emptyState.querySelector('.empty-state-title');
+      const desc = emptyState.querySelector('div:last-child');
       if (query) {
-        emptyState.querySelector('.empty-state-title').textContent = 'no matches';
-        emptyState.querySelector('div:last-child').textContent = 'try a different search term.';
+        title.textContent = 'no matches';
+        desc.textContent = 'try a different search term.';
+      } else if (currentView === 'archived') {
+        title.textContent = 'nothing archived';
+        desc.textContent = 'archived entries show up here.';
+      } else if (currentView === 'trash') {
+        title.textContent = 'trash is empty';
+        desc.textContent = 'deleted entries show up here until you empty the trash.';
       } else {
-        emptyState.querySelector('.empty-state-title').textContent = 'nothing written yet';
-        emptyState.querySelector('div:last-child').textContent = 'start your first entry above.';
+        title.textContent = 'nothing written yet';
+        desc.textContent = 'start your first entry above.';
       }
       return;
     }
@@ -939,16 +1342,10 @@
         row.appendChild(preview);
       }
 
-      if (entry.mood || (entry.tags && entry.tags.length)) {
+      if (entry.tags && entry.tags.length) {
         const metaRow = document.createElement('div');
         metaRow.className = 'entry-row-meta';
-        if (entry.mood) {
-          const chip = document.createElement('span');
-          chip.className = 'meta-chip';
-          chip.textContent = entry.mood;
-          metaRow.appendChild(chip);
-        }
-        (entry.tags || []).forEach(t => {
+        entry.tags.forEach(t => {
           const chip = document.createElement('span');
           chip.className = 'meta-chip';
           chip.textContent = t;
@@ -957,6 +1354,30 @@
         row.appendChild(metaRow);
       }
 
+      const actions = document.createElement('div');
+      actions.className = 'entry-row-actions';
+      const status = entryStatus(entry);
+
+      function actionBtn(label, danger, onClick) {
+        const btn = document.createElement('button');
+        btn.className = 'entry-row-action-btn' + (danger ? ' danger' : '');
+        btn.textContent = label;
+        btn.onclick = (ev) => { ev.stopPropagation(); onClick(); };
+        return btn;
+      }
+
+      if (status === 'active') {
+        actions.appendChild(actionBtn('archive', false, () => archiveEntry(entry.id)));
+        actions.appendChild(actionBtn('delete', true, () => trashEntry(entry.id)));
+      } else if (status === 'archived') {
+        actions.appendChild(actionBtn('unarchive', false, () => unarchiveEntry(entry.id)));
+        actions.appendChild(actionBtn('delete', true, () => trashEntry(entry.id)));
+      } else if (status === 'trash') {
+        actions.appendChild(actionBtn('restore', false, () => restoreEntry(entry.id)));
+        actions.appendChild(actionBtn('delete forever', true, () => confirmDeleteForever(entry.id)));
+      }
+      row.appendChild(actions);
+
       entryList.appendChild(row);
     });
   }
@@ -964,41 +1385,222 @@
   searchInput.addEventListener('input', renderList);
 
   // ---------- editor ----------
-  function openEntry(id) {
+  async function openEntry(id) {
+    if (currentEntryId && currentEntryId !== id) {
+      await flushSave(true);
+    }
+    clearTimeout(autosaveTimer);
     currentEntryId = id;
     const entry = entries.find(e => e.id === id);
     entryTitle.value = entry.title || '';
-    entryMood.value = entry.mood || '';
     entryTags.value = (entry.tags || []).join(', ');
     entryBody.value = entry.body || '';
     saveStatus.textContent = '';
+    refreshEditorActionButtons();
     showEditor();
   }
 
-  function newEntry() {
+  async function newEntry() {
+    if (currentEntryId) {
+      await flushSave(true);
+    }
+    clearTimeout(autosaveTimer);
     const now = Date.now();
-    const entry = { id: genId(), title: '', body: '', mood: '', tags: [], createdAt: now, updatedAt: now };
+    const entry = { id: genId(), title: '', body: '', tags: [], createdAt: now, updatedAt: now, archivedAt: null, deletedAt: null };
     entries.push(entry);
     currentEntryId = entry.id;
     entryTitle.value = '';
-    entryMood.value = '';
     entryTags.value = '';
     entryBody.value = '';
     saveStatus.textContent = '';
+    refreshEditorActionButtons();
     showEditor();
     setTimeout(() => entryTitle.focus(), 50);
   }
 
   function showEditor() {
     listView.classList.add('hidden');
+    historyView.classList.add('hidden');
     editorView.classList.remove('hidden');
   }
 
   function showList() {
     editorView.classList.add('hidden');
+    settingsView.classList.add('hidden');
+    historyView.classList.add('hidden');
     listView.classList.remove('hidden');
     renderList();
   }
+
+  async function showSettings() {
+    listView.classList.add('hidden');
+    editorView.classList.add('hidden');
+    historyView.classList.add('hidden');
+    settingsView.classList.remove('hidden');
+    passChangeError.textContent = '';
+    passChangeSuccess.textContent = '';
+    currentPassInput.value = '';
+    newPassInput.value = '';
+    newPassConfirmInput.value = '';
+    const limit = await getHistoryLimit();
+    historyLimitInput.value = limit;
+    historyLimitWarning.textContent = '';
+    await renderSettingsStats();
+  }
+
+  async function showHistory() {
+    if (!currentEntryId) return;
+    await flushSave(true);
+    editorView.classList.add('hidden');
+    historyView.classList.remove('hidden');
+    await renderHistoryList();
+  }
+
+  async function renderHistoryList() {
+    const versions = await getVersionHistory(currentEntryId);
+    historyList.innerHTML = '';
+    if (versions.length === 0) {
+      historyEmptyState.classList.remove('hidden');
+      return;
+    }
+    historyEmptyState.classList.add('hidden');
+
+    versions.forEach(v => {
+      const row = document.createElement('div');
+      row.className = 'history-row';
+
+      const top = document.createElement('div');
+      top.className = 'history-row-top';
+      const date = document.createElement('div');
+      date.className = 'history-row-date';
+      date.textContent = formatDate(v.savedAt);
+      top.appendChild(date);
+      row.appendChild(top);
+
+      const title = document.createElement('div');
+      title.className = 'history-row-title';
+      title.textContent = v.title || 'untitled entry';
+      row.appendChild(title);
+
+      if (v.body) {
+        const preview = document.createElement('div');
+        preview.className = 'history-row-preview';
+        preview.textContent = v.body.slice(0, 220);
+        row.appendChild(preview);
+      }
+
+      const actions = document.createElement('div');
+      actions.className = 'entry-row-actions';
+      const restoreBtn = document.createElement('button');
+      restoreBtn.className = 'entry-row-action-btn';
+      restoreBtn.textContent = 'restore this version';
+      restoreBtn.onclick = () => confirmRestoreVersion(v);
+      actions.appendChild(restoreBtn);
+      row.appendChild(actions);
+
+      historyList.appendChild(row);
+    });
+  }
+
+  function confirmRestoreVersion(version) {
+    showModal(
+      'restore this version?',
+      'your current draft will be saved as a version too, so you can undo this if needed.',
+      [
+        { label: 'cancel' },
+        { label: 'restore', onClick: async () => {
+          const entry = entries.find(e => e.id === currentEntryId);
+          if (!entry) return;
+          entryTitle.value = version.title || '';
+          entryTags.value = (version.tags || []).join(', ');
+          entryBody.value = version.body || '';
+          await flushSave(true); // this snapshots the current draft before overwriting
+          showEditor();
+        }}
+      ]
+    );
+  }
+
+  historyBtn.addEventListener('click', showHistory);
+  historyBackBtn.addEventListener('click', showEditor);
+
+  // ---------- duplicate entry ----------
+  duplicateEntryBtn.addEventListener('click', async () => {
+    if (!currentEntryId) return;
+    await flushSave(true);
+    const source = entries.find(e => e.id === currentEntryId);
+    if (!source) return;
+
+    const now = Date.now();
+    const copy = {
+      id: genId(),
+      title: `copy of ${source.title || 'untitled entry'}`,
+      body: source.body,
+      tags: [...(source.tags || [])],
+      createdAt: now,
+      updatedAt: now,
+      archivedAt: null,
+      deletedAt: null
+    };
+    entries.push(copy);
+    const payload = await encryptJson({
+      title: copy.title, body: copy.body, tags: copy.tags,
+      createdAt: copy.createdAt, updatedAt: copy.updatedAt,
+      archivedAt: null, deletedAt: null
+    });
+    await idbPut(STORE_ENTRIES, { id: copy.id, payload });
+    await openEntry(copy.id);
+  });
+
+  async function renderSettingsStats() {
+    statEntryCount.textContent = entries.length;
+    const rows = await idbGetAll(STORE_ENTRIES);
+    const versionRows = await idbGetAll(STORE_VERSIONS);
+    statVersionCount.textContent = versionRows.length;
+    const bytes = rows.reduce((sum, r) => sum + JSON.stringify(r).length, 0) +
+      versionRows.reduce((sum, r) => sum + JSON.stringify(r).length, 0);
+    statSize.textContent = bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
+    const lastExportRecord = await idbGet(STORE_META, 'lastExport');
+    statLastExport.textContent = lastExportRecord && lastExportRecord.value
+      ? new Date(lastExportRecord.value).toLocaleString()
+      : 'never';
+
+    const total = sessionDecryptStats.verified + sessionDecryptStats.failed;
+    if (total === 0) {
+      statVerified.textContent = 'n/a, no entries yet';
+      cryptoStatusNote.textContent = 'AES-GCM includes built-in tamper detection: an entry only decrypts if both the key and ciphertext are intact. "verified" below reflects entries that actually decrypted successfully on this unlock, not just a stored count.';
+    } else if (sessionDecryptStats.failed === 0) {
+      statVerified.textContent = `${sessionDecryptStats.verified} / ${total}`;
+      cryptoStatusNote.textContent = 'every entry decrypted and passed its AES-GCM authentication check on this unlock. that means the ciphertext was not altered and the key used was correct.';
+    } else {
+      statVerified.textContent = `${sessionDecryptStats.verified} / ${total} (${sessionDecryptStats.failed} failed)`;
+      cryptoStatusNote.textContent = `${sessionDecryptStats.failed} entr${sessionDecryptStats.failed === 1 ? 'y' : 'ies'} failed decryption on unlock, meaning that entry's ciphertext is corrupted or was written with a different key. it still exists in storage but could not be read. check the browser console for the affected entry id.`;
+    }
+  }
+
+  settingsBtn.addEventListener('click', showSettings);
+  settingsBackBtn.addEventListener('click', showList);
+
+  saveHistoryLimitBtn.addEventListener('click', async () => {
+    const n = parseInt(historyLimitInput.value, 10);
+    historyLimitWarning.textContent = '';
+    historyLimitWarning.classList.remove('settings-error');
+    historyLimitWarning.classList.add('settings-success');
+    if (!Number.isInteger(n) || n < 1) {
+      historyLimitWarning.classList.remove('settings-success');
+      historyLimitWarning.classList.add('settings-error');
+      historyLimitWarning.textContent = 'enter a whole number of at least 1.';
+      return;
+    }
+    await setHistoryLimit(n);
+    if (n > MAX_RECOMMENDED_HISTORY_LIMIT) {
+      historyLimitWarning.classList.remove('settings-success');
+      historyLimitWarning.classList.add('settings-error');
+      historyLimitWarning.textContent = `saved. keeping more than ${MAX_RECOMMENDED_HISTORY_LIMIT} versions per entry isn't recommended, since it multiplies storage use per entry with limited practical benefit.`;
+    } else {
+      historyLimitWarning.textContent = 'saved.';
+    }
+  });
 
   newEntryBtn.addEventListener('click', newEntry);
   backBtn.addEventListener('click', () => { flushSave(true); showList(); });
@@ -1015,42 +1617,346 @@
     const entry = entries.find(e => e.id === currentEntryId);
     if (!entry) return;
 
-    entry.title = entryTitle.value;
-    entry.body = entryBody.value;
-    entry.mood = entryMood.value;
-    entry.tags = entryTags.value.split(',').map(t => t.trim()).filter(Boolean);
-    entry.updatedAt = Date.now();
+    const newTitle = entryTitle.value;
+    const newBody = entryBody.value;
+    const newTags = entryTags.value.split(',').map(t => t.trim()).filter(Boolean);
 
     // don't persist fully empty entries
-    if (!entry.title && !entry.body && !entry.mood && entry.tags.length === 0) {
+    if (!newTitle && !newBody && newTags.length === 0) {
       saveStatus.textContent = '';
       return;
     }
 
+    // snapshot whatever is currently stored (the pre-edit version) into history
+    // before it gets overwritten, but only if the content actually changed and
+    // the entry has been saved at least once before (nothing to snapshot otherwise).
+    try {
+      const existingRow = await idbGet(STORE_ENTRIES, entry.id);
+      if (existingRow) {
+        const existing = await decryptJson(existingRow.payload);
+        const contentChanged = existing.title !== newTitle || existing.body !== newBody ||
+          JSON.stringify(existing.tags || []) !== JSON.stringify(newTags);
+        if (contentChanged) {
+          await snapshotVersion(entry.id, existing);
+          await pruneVersionHistory(entry.id);
+        }
+      }
+    } catch (e) {
+      console.error('version snapshot failed, continuing with save', e);
+    }
+
+    entry.title = newTitle;
+    entry.body = newBody;
+    entry.tags = newTags;
+    entry.updatedAt = Date.now();
+
     const payload = await encryptJson({
-      title: entry.title, body: entry.body, mood: entry.mood, tags: entry.tags,
-      createdAt: entry.createdAt, updatedAt: entry.updatedAt
+      title: entry.title, body: entry.body, tags: entry.tags,
+      createdAt: entry.createdAt, updatedAt: entry.updatedAt,
+      archivedAt: entry.archivedAt || null, deletedAt: entry.deletedAt || null
     });
     await idbPut(STORE_ENTRIES, { id: entry.id, payload });
     saveStatus.textContent = 'saved ' + new Date(entry.updatedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   }
 
-  [entryTitle, entryMood, entryTags, entryBody].forEach(el => {
+  [entryTitle, entryTags, entryBody].forEach(el => {
     el.addEventListener('input', scheduleSave);
+  });
+
+  // ---------- version history ----------
+  async function getHistoryLimit() {
+    const record = await idbGet(STORE_META, 'historyLimit');
+    return record && typeof record.value === 'number' ? record.value : DEFAULT_HISTORY_LIMIT;
+  }
+
+  async function setHistoryLimit(n) {
+    await idbPut(STORE_META, { key: 'historyLimit', value: n });
+  }
+
+  async function snapshotVersion(entryId, versionContent) {
+    const payload = await encryptJson({
+      title: versionContent.title, body: versionContent.body, tags: versionContent.tags || []
+    });
+    const versionId = 'v_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    await idbPut(STORE_VERSIONS, {
+      id: versionId,
+      entryId: entryId,
+      savedAt: versionContent.updatedAt || Date.now(),
+      payload
+    });
+  }
+
+  async function pruneVersionHistory(entryId) {
+    const limit = await getHistoryLimit();
+    const versions = await idbGetAllByIndex(STORE_VERSIONS, 'entryId', entryId);
+    if (versions.length <= limit) return;
+    const sorted = versions.sort((a, b) => b.savedAt - a.savedAt);
+    const toRemove = sorted.slice(limit);
+    for (const v of toRemove) await idbDelete(STORE_VERSIONS, v.id);
+  }
+
+  async function getVersionHistory(entryId) {
+    const versions = await idbGetAllByIndex(STORE_VERSIONS, 'entryId', entryId);
+    const decrypted = [];
+    for (const v of versions) {
+      try {
+        const content = await decryptJson(v.payload);
+        decrypted.push({ id: v.id, savedAt: v.savedAt, title: content.title, body: content.body, tags: content.tags || [] });
+      } catch (e) {
+        console.error('failed to decrypt version', v.id, e);
+      }
+    }
+    return decrypted.sort((a, b) => b.savedAt - a.savedAt);
+  }
+
+  async function deleteAllVersionsForEntry(entryId) {
+    const versions = await idbGetAllByIndex(STORE_VERSIONS, 'entryId', entryId);
+    for (const v of versions) await idbDelete(STORE_VERSIONS, v.id);
+  }
+
+  // ---------- archive / trash status changes ----------
+  async function persistEntryStatus(entry) {
+    // status changes (archive/trash/restore) don't touch title/body/tags,
+    // so re-encrypt with whatever is already stored rather than requiring
+    // the entry to be open in the editor.
+    const payload = await encryptJson({
+      title: entry.title, body: entry.body, tags: entry.tags,
+      createdAt: entry.createdAt, updatedAt: entry.updatedAt,
+      archivedAt: entry.archivedAt || null, deletedAt: entry.deletedAt || null
+    });
+    await idbPut(STORE_ENTRIES, { id: entry.id, payload });
+  }
+
+  async function archiveEntry(id) {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    entry.archivedAt = Date.now();
+    entry.updatedAt = Date.now();
+    await persistEntryStatus(entry);
+    renderList();
+  }
+
+  async function unarchiveEntry(id) {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    entry.archivedAt = null;
+    entry.updatedAt = Date.now();
+    await persistEntryStatus(entry);
+    renderList();
+  }
+
+  async function trashEntry(id) {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    entry.deletedAt = Date.now();
+    entry.archivedAt = null; // trash takes priority; clear archive state
+    entry.updatedAt = Date.now();
+    await persistEntryStatus(entry);
+    renderList();
+  }
+
+  async function restoreEntry(id) {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    entry.deletedAt = null;
+    entry.updatedAt = Date.now();
+    await persistEntryStatus(entry);
+    renderList();
+  }
+
+  function confirmDeleteForever(id) {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    showModal(
+      'delete this entry forever?',
+      'this permanently removes the entry from local storage. it cannot be recovered.',
+      [
+        { label: 'cancel' },
+        { label: 'delete forever', danger: true, onClick: async () => {
+          await idbDelete(STORE_ENTRIES, id);
+          await deleteAllVersionsForEntry(id);
+          entries = entries.filter(e => e.id !== id);
+          if (currentEntryId === id) currentEntryId = null;
+          if (!editorView.classList.contains('hidden') && currentEntryId === null) showList();
+          else renderList();
+        }}
+      ]
+    );
+  }
+
+  emptyTrashBtn.addEventListener('click', () => {
+    const trashCount = entries.filter(e => entryStatus(e) === 'trash').length;
+    if (trashCount === 0) return;
+    showModal(
+      'empty trash?',
+      `this permanently deletes ${trashCount} entr${trashCount === 1 ? 'y' : 'ies'} from local storage. this cannot be undone.`,
+      [
+        { label: 'cancel' },
+        { label: 'empty trash', danger: true, onClick: async () => {
+          const toDelete = entries.filter(e => entryStatus(e) === 'trash');
+          for (const e of toDelete) {
+            await idbDelete(STORE_ENTRIES, e.id);
+            await deleteAllVersionsForEntry(e.id);
+          }
+          entries = entries.filter(e => entryStatus(e) !== 'trash');
+          renderList();
+        }}
+      ]
+    );
+  });
+
+  // editor-view action buttons: reflect whichever entry is currently open
+  function refreshEditorActionButtons() {
+    const entry = entries.find(e => e.id === currentEntryId);
+    if (!entry) return;
+    const status = entryStatus(entry);
+    archiveEntryBtn.classList.toggle('hidden', status !== 'active');
+    unarchiveEntryBtn.classList.toggle('hidden', status !== 'archived');
+    deleteEntryBtn.classList.toggle('hidden', status === 'trash');
+    restoreEntryBtn.classList.toggle('hidden', status !== 'trash');
+    deleteForeverBtn.classList.toggle('hidden', status !== 'trash');
+  }
+
+  archiveEntryBtn.addEventListener('click', async () => {
+    if (!currentEntryId) return;
+    await flushSave(true);
+    await archiveEntry(currentEntryId);
+    refreshEditorActionButtons();
+  });
+
+  unarchiveEntryBtn.addEventListener('click', async () => {
+    if (!currentEntryId) return;
+    await unarchiveEntry(currentEntryId);
+    refreshEditorActionButtons();
+  });
+
+  restoreEntryBtn.addEventListener('click', async () => {
+    if (!currentEntryId) return;
+    await restoreEntry(currentEntryId);
+    refreshEditorActionButtons();
+  });
+
+  deleteForeverBtn.addEventListener('click', () => {
+    if (!currentEntryId) return;
+    confirmDeleteForever(currentEntryId);
   });
 
   deleteEntryBtn.addEventListener('click', () => {
     if (!currentEntryId) return;
     showModal(
-      'delete this entry?',
-      'this cannot be undone. the entry will be permanently removed from local storage.',
+      'move this entry to trash?',
+      'it will be moved to trash and can be restored later, or permanently deleted from the trash view.',
       [
         { label: 'cancel' },
-        { label: 'delete', danger: true, onClick: async () => {
-          await idbDelete(STORE_ENTRIES, currentEntryId);
-          entries = entries.filter(e => e.id !== currentEntryId);
+        { label: 'move to trash', danger: true, onClick: async () => {
+          await trashEntry(currentEntryId);
           currentEntryId = null;
           showList();
+        }}
+      ]
+    );
+  });
+
+  // ---------- change passphrase ----------
+  changePassBtn.addEventListener('click', async () => {
+    passChangeError.textContent = '';
+    passChangeSuccess.textContent = '';
+
+    const current = currentPassInput.value;
+    const next = newPassInput.value;
+    const nextConfirm = newPassConfirmInput.value;
+
+    if (!current) { passChangeError.textContent = 'enter your current passphrase.'; return; }
+    if (next.length < 8) { passChangeError.textContent = 'new passphrase must be at least 8 characters.'; return; }
+    if (next !== nextConfirm) { passChangeError.textContent = 'new passphrases do not match.'; return; }
+
+    changePassBtn.disabled = true;
+    changePassBtn.textContent = 'verifying…';
+
+    try {
+      // verify current passphrase against the currently active key material
+      const saltRecord = await idbGet(STORE_META, 'salt');
+      const verifyRecord = await idbGet(STORE_META, 'verify');
+      const currentKeyCheck = await deriveKey(current, saltRecord.value);
+      const savedKey = cryptoKey;
+      cryptoKey = currentKeyCheck;
+      try {
+        await decryptJson(verifyRecord.value);
+      } catch (e) {
+        cryptoKey = savedKey;
+        passChangeError.textContent = 'current passphrase is incorrect.';
+        changePassBtn.disabled = false;
+        changePassBtn.textContent = 'change passphrase';
+        return;
+      }
+
+      changePassBtn.textContent = 're-encrypting…';
+
+      // derive new key + salt, re-encrypt every entry AND every stored version,
+      // build the full new dataset before committing anything
+      const newSalt = randomSaltB64();
+      const newKey = await deriveKey(next, newSalt);
+
+      const rows = await idbGetAll(STORE_ENTRIES);
+      const versionRows = await idbGetAll(STORE_VERSIONS);
+      const reencrypted = [];
+      const reencryptedVersions = [];
+      cryptoKey = currentKeyCheck; // ensure decrypts use verified current key
+      for (const row of rows) {
+        const decrypted = await decryptJson(row.payload);
+        cryptoKey = newKey;
+        const payload = await encryptJson(decrypted);
+        reencrypted.push({ id: row.id, payload });
+        cryptoKey = currentKeyCheck;
+      }
+      for (const row of versionRows) {
+        const decrypted = await decryptJson(row.payload);
+        cryptoKey = newKey;
+        const payload = await encryptJson(decrypted);
+        reencryptedVersions.push({ id: row.id, entryId: row.entryId, savedAt: row.savedAt, payload });
+        cryptoKey = currentKeyCheck;
+      }
+
+      cryptoKey = newKey;
+      const newVerify = await encryptJson({ check: 'ledger-ok' });
+
+      // commit: only after everything above succeeded
+      await idbPut(STORE_META, { key: 'salt', value: newSalt });
+      await idbPut(STORE_META, { key: 'verify', value: newVerify });
+      for (const row of reencrypted) {
+        await idbPut(STORE_ENTRIES, row);
+      }
+      for (const row of reencryptedVersions) {
+        await idbPut(STORE_VERSIONS, row);
+      }
+
+      currentPassInput.value = '';
+      newPassInput.value = '';
+      newPassConfirmInput.value = '';
+      sessionDecryptStats = { verified: reencrypted.length, failed: 0 };
+      passChangeSuccess.textContent = 'passphrase changed. export a fresh backup, the old backup file no longer matches this passphrase.';
+      await renderSettingsStats();
+    } catch (e) {
+      passChangeError.textContent = 'something went wrong, passphrase was not changed: ' + e.message;
+    } finally {
+      changePassBtn.disabled = false;
+      changePassBtn.textContent = 'change passphrase';
+    }
+  });
+
+  // ---------- erase everything ----------
+  eraseAllBtn.addEventListener('click', () => {
+    showModal(
+      'erase all entries?',
+      'this permanently deletes every entry in this browser. your passphrase stays the same. this cannot be undone. export a backup first if you want to keep anything.',
+      [
+        { label: 'cancel' },
+        { label: 'erase everything', danger: true, onClick: async () => {
+          await idbClearAll(STORE_ENTRIES);
+          await idbClearAll(STORE_VERSIONS);
+          entries = [];
+          await renderSettingsStats();
+          showModal('done', 'all entries have been erased.', [{ label: 'ok' }]);
         }}
       ]
     );
@@ -1061,14 +1967,18 @@
     const saltRecord = await idbGet(STORE_META, 'salt');
     const verifyRecord = await idbGet(STORE_META, 'verify');
     const rows = await idbGetAll(STORE_ENTRIES);
+    const versionRows = await idbGetAll(STORE_VERSIONS);
+    const historyLimitRecord = await idbGet(STORE_META, 'historyLimit');
 
     const dump = {
       app: 'ledger',
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       salt: saltRecord.value,
       verify: verifyRecord.value,
-      entries: rows
+      entries: rows,
+      versions: versionRows,
+      historyLimit: historyLimitRecord ? historyLimitRecord.value : DEFAULT_HISTORY_LIMIT
     };
 
     const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
@@ -1118,11 +2028,20 @@
 
       await idbClearAll(STORE_ENTRIES);
       await idbClearAll(STORE_META);
+      await idbClearAll(STORE_VERSIONS);
       await idbPut(STORE_META, { key: 'salt', value: dump.salt });
       await idbPut(STORE_META, { key: 'verify', value: dump.verify });
       for (const row of dump.entries) {
         await idbPut(STORE_ENTRIES, row);
       }
+      // versions and historyLimit are only present in backup format v2+;
+      // older backups simply won't have them, which is fine, treated as empty/default.
+      if (Array.isArray(dump.versions)) {
+        for (const row of dump.versions) {
+          await idbPut(STORE_VERSIONS, row);
+        }
+      }
+      await idbPut(STORE_META, { key: 'historyLimit', value: typeof dump.historyLimit === 'number' ? dump.historyLimit : DEFAULT_HISTORY_LIMIT });
 
       restoreFileInput.value = '';
 
@@ -1138,6 +2057,51 @@
     } catch (err) {
       restoreFileInput.value = '';
       showModal('import failed', err.message || 'could not read this file as a ledger backup.', [{ label: 'ok' }]);
+    }
+  });
+
+  // ---------- keyboard shortcuts ----------
+  // only active once unlocked, and never while a modal is open, to avoid
+  // firing a shortcut mid-confirmation (e.g. locking while a delete prompt is up).
+  window.addEventListener('keydown', (e) => {
+    if (!app.classList.contains('active')) return;
+    if (!modalOverlay.classList.contains('hidden')) return;
+
+    const mod = e.metaKey || e.ctrlKey;
+    if (!mod) return;
+
+    // Cmd/Ctrl+Shift+L: lock immediately
+    if (e.shiftKey && e.key.toLowerCase() === 'l') {
+      e.preventDefault();
+      lockApp();
+      return;
+    }
+
+    // Cmd/Ctrl+N: new entry (only from the list view, not mid-edit of another entry)
+    if (!e.shiftKey && e.key.toLowerCase() === 'n') {
+      if (!editorView.classList.contains('hidden') || !settingsView.classList.contains('hidden')) return;
+      e.preventDefault();
+      newEntry();
+      return;
+    }
+
+    // Cmd/Ctrl+S: force an immediate save while editing
+    if (!e.shiftKey && e.key.toLowerCase() === 's') {
+      if (editorView.classList.contains('hidden')) return;
+      e.preventDefault();
+      flushSave(true);
+    }
+  });
+
+  // ---------- unsaved-changes guard ----------
+  // beforeunload cannot reliably wait on async work (IndexedDB writes, WebCrypto
+  // encryption are both promise-based), so this warns instead of silently
+  // "saving" on the way out, since a promised save that can't be guaranteed
+  // to finish is worse than an honest warning.
+  window.addEventListener('beforeunload', (e) => {
+    if (autosaveTimer) {
+      e.preventDefault();
+      e.returnValue = '';
     }
   });
 
