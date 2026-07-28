@@ -217,6 +217,7 @@
     display: flex;
     gap: 10px;
     margin: 24px 0 12px 0;
+<<<<<<< HEAD
   }
 
   .view-tabs {
@@ -319,7 +320,75 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     margin-bottom: 10px;
+=======
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
   }
+
+  .view-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+
+  .view-tab {
+    background: none;
+    border: 1px solid transparent;
+    color: var(--text-faint);
+    padding: 6px 12px;
+    border-radius: 3px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+  }
+  .view-tab:hover { color: var(--text-dim); }
+  .view-tab.active {
+    color: var(--text);
+    border-color: var(--border);
+    background: var(--bg-raised);
+  }
+  .view-tab .tab-count {
+    color: inherit;
+    opacity: 0.6;
+    margin-left: 4px;
+  }
+
+  .search-scope-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: -4px 0 16px 0;
+  }
+  .search-scope-row label {
+    font-size: 11px;
+    color: var(--text-faint);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .search-scope-row input[type="checkbox"] {
+    accent-color: var(--accent-interactive);
+  }
+
+  .entry-row-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .entry-row-action-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+  }
+  .entry-row-action-btn:hover { border-color: var(--border-focus); color: var(--text); }
+  .entry-row-action-btn.danger:hover { border-color: var(--danger-dim); color: var(--danger); }
 
   .search-input {
     flex: 1;
@@ -737,8 +806,11 @@
     <div class="editor-header">
       <button class="back-btn" id="backBtn">&larr; back</button>
       <div class="editor-actions">
+<<<<<<< HEAD
         <button class="icon-btn" id="historyBtn">history</button>
         <button class="icon-btn" id="duplicateEntryBtn">duplicate</button>
+=======
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
         <button class="icon-btn hidden" id="archiveEntryBtn">archive</button>
         <button class="icon-btn hidden" id="unarchiveEntryBtn">unarchive</button>
         <button class="icon-btn hidden" id="restoreEntryBtn">restore</button>
@@ -761,6 +833,7 @@
     <div class="save-status" id="saveStatus"></div>
   </div>
 
+<<<<<<< HEAD
   <!-- HISTORY VIEW -->
   <div id="historyView" class="hidden">
     <div class="settings-header">
@@ -776,6 +849,8 @@
     </div>
   </div>
 
+=======
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
   <!-- SETTINGS VIEW -->
   <div id="settingsView" class="hidden">
     <div class="settings-header">
@@ -795,12 +870,16 @@
     <div class="settings-section">
       <div class="settings-section-title">storage</div>
       <div class="settings-stat-row"><span>entries (all, incl. archived/trash)</span><span id="statEntryCount">—</span></div>
+<<<<<<< HEAD
       <div class="settings-stat-row"><span>saved versions</span><span id="statVersionCount">—</span></div>
+=======
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
       <div class="settings-stat-row"><span>approx. size</span><span id="statSize">—</span></div>
       <div class="settings-stat-row"><span>last export</span><span id="statLastExport">—</span></div>
     </div>
 
     <div class="settings-section">
+<<<<<<< HEAD
       <div class="settings-section-title">version history</div>
       <div class="settings-section-desc">a version is saved automatically before each meaningful edit. more versions means more storage used per entry; keeping this low is recommended.</div>
       <div class="settings-error" id="historyLimitWarning"></div>
@@ -809,6 +888,8 @@
     </div>
 
     <div class="settings-section">
+=======
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
       <div class="settings-section-title">change passphrase</div>
       <div class="settings-section-desc">re-encrypts every entry with a new key. this can take a moment if you have many entries. do not close this tab while it runs.</div>
       <div class="settings-error" id="passChangeError"></div>
@@ -1007,7 +1088,10 @@
   const listView = $('listView');
   const editorView = $('editorView');
   const settingsView = $('settingsView');
+<<<<<<< HEAD
   const historyView = $('historyView');
+=======
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
   const entryList = $('entryList');
   const emptyState = $('emptyState');
   const searchInput = $('searchInput');
@@ -1032,6 +1116,7 @@
   const unarchiveEntryBtn = $('unarchiveEntryBtn');
   const restoreEntryBtn = $('restoreEntryBtn');
   const deleteForeverBtn = $('deleteForeverBtn');
+<<<<<<< HEAD
   const historyBtn = $('historyBtn');
   const duplicateEntryBtn = $('duplicateEntryBtn');
   const historyBackBtn = $('historyBackBtn');
@@ -1041,6 +1126,8 @@
   const saveHistoryLimitBtn = $('saveHistoryLimitBtn');
   const historyLimitWarning = $('historyLimitWarning');
   const statVersionCount = $('statVersionCount');
+=======
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
   const entryTitle = $('entryTitle');
   const entryTags = $('entryTags');
   const entryBody = $('entryBody');
@@ -1427,7 +1514,10 @@
   function showList() {
     editorView.classList.add('hidden');
     settingsView.classList.add('hidden');
+<<<<<<< HEAD
     historyView.classList.add('hidden');
+=======
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
     listView.classList.remove('hidden');
     renderList();
   }
@@ -1435,13 +1525,17 @@
   async function showSettings() {
     listView.classList.add('hidden');
     editorView.classList.add('hidden');
+<<<<<<< HEAD
     historyView.classList.add('hidden');
+=======
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
     settingsView.classList.remove('hidden');
     passChangeError.textContent = '';
     passChangeSuccess.textContent = '';
     currentPassInput.value = '';
     newPassInput.value = '';
     newPassConfirmInput.value = '';
+<<<<<<< HEAD
     const limit = await getHistoryLimit();
     historyLimitInput.value = limit;
     historyLimitWarning.textContent = '';
@@ -1559,6 +1653,15 @@
     statVersionCount.textContent = versionRows.length;
     const bytes = rows.reduce((sum, r) => sum + JSON.stringify(r).length, 0) +
       versionRows.reduce((sum, r) => sum + JSON.stringify(r).length, 0);
+=======
+    await renderSettingsStats();
+  }
+
+  async function renderSettingsStats() {
+    statEntryCount.textContent = entries.length;
+    const rows = await idbGetAll(STORE_ENTRIES);
+    const bytes = rows.reduce((sum, r) => sum + JSON.stringify(r).length, 0);
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
     statSize.textContent = bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
     const lastExportRecord = await idbGet(STORE_META, 'lastExport');
     statLastExport.textContent = lastExportRecord && lastExportRecord.value
@@ -1581,6 +1684,7 @@
   settingsBtn.addEventListener('click', showSettings);
   settingsBackBtn.addEventListener('click', showList);
 
+<<<<<<< HEAD
   saveHistoryLimitBtn.addEventListener('click', async () => {
     const n = parseInt(historyLimitInput.value, 10);
     historyLimitWarning.textContent = '';
@@ -1602,6 +1706,8 @@
     }
   });
 
+=======
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
   newEntryBtn.addEventListener('click', newEntry);
   backBtn.addEventListener('click', () => { flushSave(true); showList(); });
 
@@ -1617,12 +1723,22 @@
     const entry = entries.find(e => e.id === currentEntryId);
     if (!entry) return;
 
+<<<<<<< HEAD
     const newTitle = entryTitle.value;
     const newBody = entryBody.value;
     const newTags = entryTags.value.split(',').map(t => t.trim()).filter(Boolean);
 
     // don't persist fully empty entries
     if (!newTitle && !newBody && newTags.length === 0) {
+=======
+    entry.title = entryTitle.value;
+    entry.body = entryBody.value;
+    entry.tags = entryTags.value.split(',').map(t => t.trim()).filter(Boolean);
+    entry.updatedAt = Date.now();
+
+    // don't persist fully empty entries
+    if (!entry.title && !entry.body && entry.tags.length === 0) {
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
       saveStatus.textContent = '';
       return;
     }
@@ -1663,6 +1779,7 @@
     el.addEventListener('input', scheduleSave);
   });
 
+<<<<<<< HEAD
   // ---------- version history ----------
   async function getHistoryLimit() {
     const record = await idbGet(STORE_META, 'historyLimit');
@@ -1714,6 +1831,8 @@
     for (const v of versions) await idbDelete(STORE_VERSIONS, v.id);
   }
 
+=======
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
   // ---------- archive / trash status changes ----------
   async function persistEntryStatus(entry) {
     // status changes (archive/trash/restore) don't touch title/body/tags,
@@ -1774,7 +1893,10 @@
         { label: 'cancel' },
         { label: 'delete forever', danger: true, onClick: async () => {
           await idbDelete(STORE_ENTRIES, id);
+<<<<<<< HEAD
           await deleteAllVersionsForEntry(id);
+=======
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
           entries = entries.filter(e => e.id !== id);
           if (currentEntryId === id) currentEntryId = null;
           if (!editorView.classList.contains('hidden') && currentEntryId === null) showList();
@@ -1794,10 +1916,14 @@
         { label: 'cancel' },
         { label: 'empty trash', danger: true, onClick: async () => {
           const toDelete = entries.filter(e => entryStatus(e) === 'trash');
+<<<<<<< HEAD
           for (const e of toDelete) {
             await idbDelete(STORE_ENTRIES, e.id);
             await deleteAllVersionsForEntry(e.id);
           }
+=======
+          for (const e of toDelete) await idbDelete(STORE_ENTRIES, e.id);
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
           entries = entries.filter(e => entryStatus(e) !== 'trash');
           renderList();
         }}
@@ -1892,15 +2018,23 @@
 
       changePassBtn.textContent = 're-encrypting…';
 
+<<<<<<< HEAD
       // derive new key + salt, re-encrypt every entry AND every stored version,
       // build the full new dataset before committing anything
+=======
+      // derive new key + salt, re-encrypt every entry, build full new dataset before committing anything
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
       const newSalt = randomSaltB64();
       const newKey = await deriveKey(next, newSalt);
 
       const rows = await idbGetAll(STORE_ENTRIES);
+<<<<<<< HEAD
       const versionRows = await idbGetAll(STORE_VERSIONS);
       const reencrypted = [];
       const reencryptedVersions = [];
+=======
+      const reencrypted = [];
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
       cryptoKey = currentKeyCheck; // ensure decrypts use verified current key
       for (const row of rows) {
         const decrypted = await decryptJson(row.payload);
@@ -1909,6 +2043,7 @@
         reencrypted.push({ id: row.id, payload });
         cryptoKey = currentKeyCheck;
       }
+<<<<<<< HEAD
       for (const row of versionRows) {
         const decrypted = await decryptJson(row.payload);
         cryptoKey = newKey;
@@ -1916,6 +2051,8 @@
         reencryptedVersions.push({ id: row.id, entryId: row.entryId, savedAt: row.savedAt, payload });
         cryptoKey = currentKeyCheck;
       }
+=======
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
 
       cryptoKey = newKey;
       const newVerify = await encryptJson({ check: 'ledger-ok' });
@@ -1926,9 +2063,12 @@
       for (const row of reencrypted) {
         await idbPut(STORE_ENTRIES, row);
       }
+<<<<<<< HEAD
       for (const row of reencryptedVersions) {
         await idbPut(STORE_VERSIONS, row);
       }
+=======
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
 
       currentPassInput.value = '';
       newPassInput.value = '';
@@ -1952,8 +2092,13 @@
       [
         { label: 'cancel' },
         { label: 'erase everything', danger: true, onClick: async () => {
+<<<<<<< HEAD
           await idbClearAll(STORE_ENTRIES);
           await idbClearAll(STORE_VERSIONS);
+=======
+          const rows = await idbGetAll(STORE_ENTRIES);
+          for (const row of rows) await idbDelete(STORE_ENTRIES, row.id);
+>>>>>>> a47097b1812137bb7d84e394d65e96d3230c417a
           entries = [];
           await renderSettingsStats();
           showModal('done', 'all entries have been erased.', [{ label: 'ok' }]);
