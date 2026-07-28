@@ -1039,7 +1039,7 @@
     const sorted = [...entries].sort((a, b) => b.updatedAt - a.updatedAt);
     const filtered = query
       ? sorted.filter(e =>
-          (e.title || '').toLowerCase().includes(query) ||
+          (e.title || 'untitled entry').toLowerCase().includes(query) ||
           (e.body || '').toLowerCase().includes(query) ||
           (e.tags || []).some(t => t.toLowerCase().includes(query))
         )
