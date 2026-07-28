@@ -155,6 +155,39 @@
     margin-top: 20px;
   }
   .lock-toggle:hover { color: var(--text); }
+  .lock-toggle.danger-link { color: var(--danger); }
+  .lock-toggle.danger-link:hover { color: #c47b73; }
+
+  .vault-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    text-align: left;
+    font-size: inherit;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .vault-row:hover {
+    border-color: var(--border-focus);
+    background: #171a1f;
+  }
+  .vault-row-label {
+    font-family: var(--serif);
+    font-size: 16px;
+    color: var(--text);
+  }
+  .vault-row-arrow {
+    color: var(--text-faint);
+    font-size: 14px;
+    flex-shrink: 0;
+  }
 
   /* ---------- app shell ---------- */
 
@@ -285,6 +318,59 @@
   .entry-row-action-btn:hover { border-color: var(--border-focus); color: var(--text); }
   .entry-row-action-btn.danger:hover { border-color: var(--danger-dim); color: var(--danger); }
 
+  .row-menu-trigger {
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 15px;
+    line-height: 1;
+    opacity: 0;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+  }
+  .entry-row:hover .row-menu-trigger,
+  .row-menu-trigger.menu-open {
+    opacity: 1;
+  }
+  .row-menu-trigger:hover,
+  .row-menu-trigger.menu-open {
+    background: var(--bg-input);
+    color: var(--text);
+  }
+  @media (hover: none) {
+    .row-menu-trigger { opacity: 1; }
+  }
+
+  .row-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-focus);
+    border-radius: 4px;
+    min-width: 150px;
+    z-index: 20;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+  .row-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    padding: 9px 14px;
+    font-size: 12px;
+    transition: all 0.1s ease;
+  }
+  .row-menu-item:hover { background: var(--bg-raised); color: var(--text); }
+  .row-menu-item.danger { color: var(--danger); }
+  .row-menu-item.danger:hover { background: var(--danger-dim); color: var(--text); }
+
   .history-row {
     background: var(--bg-raised);
     border: 1px solid var(--border);
@@ -365,10 +451,11 @@
   }
 
   .entry-row-top {
+    position: relative;
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    gap: 12px;
+    align-items: center;
+    gap: 8px;
   }
 
   .entry-row-title {
@@ -668,9 +755,34 @@
 </head>
 <body>
 
-<!-- ===== LOCK / SETUP SCREEN ===== -->
-<div class="screen" id="lockScreen">
+<!-- ===== VAULT PICKER SCREEN ===== -->
+<div class="screen" id="pickerScreen">
   <div class="lock-card">
+    <div class="lock-mark">ledger</div>
+    <h1 class="lock-title">notebooks</h1>
+
+    <div id="vaultList"></div>
+
+    <div class="empty-state hidden" id="vaultListEmpty" style="padding: 24px 0;">
+      <div class="empty-state-title">no notebooks yet</div>
+      <div>create your first one below.</div>
+    </div>
+
+    <button class="lock-btn" id="newVaultBtn" style="margin-top: 16px;">+ new notebook</button>
+
+    <div class="lock-note">
+      each notebook is fully separate: its own passphrase, its own encrypted storage. opening one never exposes or requires access to the others.
+    </div>
+
+    <button class="lock-toggle" id="importVaultBtn">import a notebook from a backup file</button>
+    <input type="file" class="file-input-hidden" id="restoreFileInput" accept=".json" />
+  </div>
+</div>
+
+<!-- ===== LOCK / SETUP SCREEN ===== -->
+<div class="screen hidden" id="lockScreen">
+  <div class="lock-card">
+    <button class="lock-toggle" id="backToPickerBtn" style="margin-top: 0; margin-bottom: 20px;">&larr; all notebooks</button>
     <div class="lock-mark" id="lockMark">ledger</div>
     <h1 class="lock-title" id="lockTitle">unlock</h1>
 
@@ -684,11 +796,10 @@
     <button class="lock-btn" id="lockSubmit">unlock</button>
 
     <div class="lock-note" id="lockNote">
-      entries are encrypted in your browser before they touch disk. there is no server, no account, and no password recovery. if you lose this passphrase, the entries are unrecoverable by design.
+      entries are encrypted in your browser before they touch disk. there is no server, no account, and no password recovery. if you lose this passphrase, this notebook's entries are unrecoverable by design.
     </div>
 
-    <button class="lock-toggle hidden" id="importInstead">restore from a backup file instead</button>
-    <input type="file" class="file-input-hidden" id="restoreFileInput" accept=".json" />
+    <button class="lock-toggle danger-link hidden" id="deleteVaultBtn">delete this notebook from this browser</button>
   </div>
 </div>
 
@@ -698,7 +809,7 @@
   <!-- LIST VIEW -->
   <div id="listView">
     <div class="app-header">
-      <div class="app-title">ledger</div>
+      <div class="app-title" id="appTitle">ledger</div>
       <div class="header-actions">
         <span class="export-status" id="exportStatus"></span>
         <button class="icon-btn" id="exportBtn">export</button>
@@ -820,9 +931,9 @@
     </div>
 
     <div class="settings-section">
-      <div class="settings-section-title">erase everything</div>
-      <div class="settings-section-desc">permanently deletes all entries from this browser. export a backup first if you want to keep anything.</div>
-      <button class="settings-btn danger-btn" id="eraseAllBtn">erase all entries</button>
+      <div class="settings-section-title">erase this notebook</div>
+      <div class="settings-section-desc">permanently deletes all entries and versions in this notebook only. other notebooks are not affected. export a backup first if you want to keep anything.</div>
+      <button class="settings-btn danger-btn" id="eraseAllBtn">erase this notebook's entries</button>
     </div>
   </div>
 
@@ -842,7 +953,10 @@
   'use strict';
 
   // ---------- constants ----------
-  const DB_NAME = 'ledger_db';
+  const REGISTRY_DB_NAME = 'ledger_registry';
+  const REGISTRY_DB_VERSION = 1;
+  const STORE_VAULTS = 'vaults';
+  const DB_NAME_PREFIX = 'ledger_db__';
   const DB_VERSION = 2;
   const STORE_ENTRIES = 'entries';
   const STORE_META = 'meta';
@@ -852,7 +966,10 @@
   const DEFAULT_HISTORY_LIMIT = 15;
   const MAX_RECOMMENDED_HISTORY_LIMIT = 30;
 
+  let registryDb = null;
   let db = null;
+  let currentVaultId = null;
+  let currentVaultLabel = '';
   let cryptoKey = null;
   let entries = []; // decrypted, in-memory: {id, title, body, tags, createdAt, updatedAt, archivedAt, deletedAt}
   let currentEntryId = null;
@@ -878,9 +995,9 @@
   }
 
   // ---------- IndexedDB setup ----------
-  function openDb() {
+  function openDb(vaultId) {
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      const req = indexedDB.open(DB_NAME_PREFIX + vaultId, DB_VERSION);
       req.onupgradeneeded = (e) => {
         const _db = e.target.result;
         if (!_db.objectStoreNames.contains(STORE_ENTRIES)) {
@@ -896,6 +1013,51 @@
       };
       req.onsuccess = (e) => resolve(e.target.result);
       req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  function openRegistryDb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(REGISTRY_DB_NAME, REGISTRY_DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const _db = e.target.result;
+        if (!_db.objectStoreNames.contains(STORE_VAULTS)) {
+          _db.createObjectStore(STORE_VAULTS, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = (e) => resolve(e.target.result);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  function genVaultId() {
+    return 'vault_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+  }
+
+  function listVaults() {
+    return new Promise((resolve, reject) => {
+      const tx = registryDb.transaction(STORE_VAULTS, 'readonly');
+      const req = tx.objectStore(STORE_VAULTS).getAll();
+      req.onsuccess = () => resolve(req.result.sort((a, b) => a.createdAt - b.createdAt));
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  function registerVault(id, label) {
+    return new Promise((resolve, reject) => {
+      const tx = registryDb.transaction(STORE_VAULTS, 'readwrite');
+      tx.objectStore(STORE_VAULTS).put({ id, label, createdAt: Date.now() });
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  function unregisterVault(id) {
+    return new Promise((resolve, reject) => {
+      const tx = registryDb.transaction(STORE_VAULTS, 'readwrite');
+      tx.objectStore(STORE_VAULTS).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e.target.error);
     });
   }
 
@@ -992,7 +1154,15 @@
 
   // ---------- DOM refs ----------
   const $ = (id) => document.getElementById(id);
+  const pickerScreen = $('pickerScreen');
+  const vaultList = $('vaultList');
+  const vaultListEmpty = $('vaultListEmpty');
+  const newVaultBtn = $('newVaultBtn');
+  const importVaultBtn = $('importVaultBtn');
+  const restoreFileInput = $('restoreFileInput');
+
   const lockScreen = $('lockScreen');
+  const backToPickerBtn = $('backToPickerBtn');
   const lockTitle = $('lockTitle');
   const passLabel = $('passLabel');
   const passInput = $('passInput');
@@ -1000,8 +1170,7 @@
   const lockError = $('lockError');
   const lockSubmit = $('lockSubmit');
   const lockNote = $('lockNote');
-  const importInstead = $('importInstead');
-  const restoreFileInput = $('restoreFileInput');
+  const deleteVaultBtn = $('deleteVaultBtn');
 
   const app = $('app');
   const listView = $('listView');
@@ -1022,6 +1191,7 @@
   const includeArchivedSearch = $('includeArchivedSearch');
   const emptyTrashBtn = $('emptyTrashBtn');
   const exportBtn = $('exportBtn');
+  const appTitle = $('appTitle');
   const exportStatus = $('exportStatus');
   const importBtn = $('importBtn');
   const lockBtn = $('lockBtn');
@@ -1084,29 +1254,84 @@
   }
   function hideModal() { modalOverlay.classList.add('hidden'); }
 
-  // ---------- init / lock screen mode ----------
+  // ---------- vault picker ----------
   async function init() {
-    db = await openDb();
-    const saltRecord = await idbGet(STORE_META, 'salt');
-    const verifyRecord = await idbGet(STORE_META, 'verify');
+    registryDb = await openRegistryDb();
+    await showPicker();
+  }
 
-    if (!saltRecord || !verifyRecord) {
-      isSetupMode = true;
-      lockTitle.textContent = 'set up';
-      passLabel.textContent = 'choose a passphrase';
-      passConfirmInput.classList.remove('hidden');
-      lockSubmit.textContent = 'create';
-      importInstead.classList.remove('hidden');
-    } else {
-      isSetupMode = false;
-      lockTitle.textContent = 'unlock';
-      passLabel.textContent = 'passphrase';
-      passConfirmInput.classList.add('hidden');
-      lockSubmit.textContent = 'unlock';
-      importInstead.classList.add('hidden');
-    }
+  async function showPicker() {
+    lockScreen.classList.add('hidden');
+    pickerScreen.classList.remove('hidden');
+    app.classList.remove('active');
+    db = null;
+    currentVaultId = null;
+    currentVaultLabel = '';
+
+    const vaults = await listVaults();
+    vaultList.innerHTML = '';
+    vaultListEmpty.classList.toggle('hidden', vaults.length > 0);
+
+    vaults.forEach(v => {
+      const row = document.createElement('button');
+      row.className = 'vault-row';
+      row.onclick = () => openVaultPassphraseScreen(v.id, v.label);
+
+      const label = document.createElement('div');
+      label.className = 'vault-row-label';
+      label.textContent = v.label;
+
+      const arrow = document.createElement('div');
+      arrow.className = 'vault-row-arrow';
+      arrow.textContent = '→';
+
+      row.appendChild(label);
+      row.appendChild(arrow);
+      vaultList.appendChild(row);
+    });
+  }
+
+  function openVaultPassphraseScreen(vaultId, label) {
+    currentVaultId = vaultId;
+    currentVaultLabel = label;
+    isSetupMode = false;
+    pickerScreen.classList.add('hidden');
+    lockScreen.classList.remove('hidden');
+    lockTitle.textContent = label;
+    passLabel.textContent = 'passphrase';
+    passConfirmInput.classList.add('hidden');
+    passConfirmInput.value = '';
+    lockSubmit.textContent = 'unlock';
+    lockSubmit.disabled = false;
+    lockError.textContent = '';
+    lockNote.textContent = 'entries are encrypted in your browser before they touch disk. there is no server, no account, and no password recovery. if you lose this passphrase, this notebook\u2019s entries are unrecoverable by design.';
+    deleteVaultBtn.classList.remove('hidden');
+    passInput.value = '';
     passInput.focus();
   }
+
+  newVaultBtn.addEventListener('click', startNewVaultFlow);
+
+  function startNewVaultFlow() {
+    currentVaultId = genVaultId();
+    currentVaultLabel = '';
+    isSetupMode = true;
+    pickerScreen.classList.add('hidden');
+    lockScreen.classList.remove('hidden');
+    lockTitle.textContent = 'new notebook';
+    passLabel.textContent = 'choose a passphrase';
+    passConfirmInput.classList.remove('hidden');
+    passConfirmInput.value = '';
+    lockSubmit.textContent = 'create';
+    lockSubmit.disabled = false;
+    lockError.textContent = '';
+    lockNote.textContent = 'entries are encrypted in your browser before they touch disk. there is no server, no account, and no password recovery. if you lose this passphrase, this notebook\u2019s entries are unrecoverable by design.';
+    deleteVaultBtn.classList.add('hidden');
+    passInput.value = '';
+    passInput.focus();
+  }
+
+  backToPickerBtn.addEventListener('click', showPicker);
 
   async function handleSetup() {
     const p1 = passInput.value;
@@ -1122,16 +1347,23 @@
       return;
     }
 
+    const label = (prompt('name this notebook (e.g. "personal", "work"):') || '').trim();
+    if (!label) {
+      lockError.textContent = 'a notebook needs a name to tell it apart from others.';
+      return;
+    }
+
     lockSubmit.disabled = true;
     lockSubmit.textContent = 'setting up…';
 
+    db = await openDb(currentVaultId);
     const salt = randomSaltB64();
     cryptoKey = await deriveKey(p1, salt);
-
     const verifyPayload = await encryptJson({ check: 'ledger-ok' });
-
     await idbPut(STORE_META, { key: 'salt', value: salt });
     await idbPut(STORE_META, { key: 'verify', value: verifyPayload });
+    await registerVault(currentVaultId, label);
+    currentVaultLabel = label;
 
     entries = [];
     sessionDecryptStats = { verified: 0, failed: 0 };
@@ -1145,6 +1377,7 @@
     lockSubmit.textContent = 'unlocking…';
 
     try {
+      db = await openDb(currentVaultId);
       const saltRecord = await idbGet(STORE_META, 'salt');
       const verifyRecord = await idbGet(STORE_META, 'verify');
       cryptoKey = await deriveKey(p1, saltRecord.value);
@@ -1168,6 +1401,7 @@
       lockError.textContent = 'incorrect passphrase.';
       lockSubmit.disabled = false;
       lockSubmit.textContent = 'unlock';
+      db = null;
     }
   }
 
@@ -1177,16 +1411,44 @@
   passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !isSetupMode) handleUnlock(); });
   passConfirmInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSetup(); });
 
+  deleteVaultBtn.addEventListener('click', () => {
+    showModal(
+      `delete "${currentVaultLabel}"?`,
+      'this permanently deletes this notebook\u2019s entries, versions, and settings from this browser. this cannot be undone. export a backup first if you want to keep anything. other notebooks are not affected.',
+      [
+        { label: 'cancel' },
+        { label: 'delete this notebook', danger: true, onClick: async () => {
+          const idToDelete = currentVaultId;
+          await unregisterVault(idToDelete);
+          if (db) db.close();
+          await new Promise((resolve, reject) => {
+            const req = indexedDB.deleteDatabase(DB_NAME_PREFIX + idToDelete);
+            req.onsuccess = () => resolve();
+            req.onerror = () => reject(req.error);
+            req.onblocked = () => resolve(); // proceed anyway; it'll finish once unblocked
+          });
+          await showPicker();
+        }}
+      ]
+    );
+  });
+
   function enterApp() {
-    lockScreen.style.display = 'none';
+    lockScreen.classList.add('hidden');
+    pickerScreen.classList.add('hidden');
     app.classList.add('active');
+    appTitle.textContent = currentVaultLabel || 'ledger';
     passInput.value = '';
     passConfirmInput.value = '';
     renderList();
     renderExportStatus();
   }
 
-  function lockApp() {
+  async function lockApp() {
+    clearTimeout(autosaveTimer);
+    if (currentEntryId) {
+      try { await flushSave(true); } catch (e) { console.error('flush on lock failed', e); }
+    }
     cryptoKey = null;
     entries = [];
     currentEntryId = null;
@@ -1196,18 +1458,8 @@
     tabTrash.classList.remove('active');
     searchScopeRow.classList.remove('hidden');
     emptyTrashBtn.classList.add('hidden');
-    app.classList.remove('active');
-    lockScreen.style.display = 'flex';
-    passInput.value = '';
-    lockError.textContent = '';
-    isSetupMode = false;
-    lockTitle.textContent = 'unlock';
-    passLabel.textContent = 'passphrase';
-    passConfirmInput.classList.add('hidden');
-    lockSubmit.textContent = 'unlock';
-    lockSubmit.disabled = false;
-    importInstead.classList.add('hidden');
-    passInput.focus();
+    if (db) { db.close(); db = null; }
+    showPicker();
   }
 
   lockBtn.addEventListener('click', lockApp);
@@ -1331,8 +1583,18 @@
       date.className = 'entry-row-date';
       date.textContent = formatDate(entry.updatedAt);
 
+      const menuTrigger = document.createElement('button');
+      menuTrigger.className = 'row-menu-trigger';
+      menuTrigger.textContent = '⋯';
+      menuTrigger.setAttribute('aria-label', 'entry actions');
+      menuTrigger.onclick = (ev) => {
+        ev.stopPropagation();
+        toggleRowMenu(entry.id, menuTrigger, top);
+      };
+
       top.appendChild(title);
       top.appendChild(date);
+      top.appendChild(menuTrigger);
       row.appendChild(top);
 
       if (entry.body) {
@@ -1354,33 +1616,77 @@
         row.appendChild(metaRow);
       }
 
-      const actions = document.createElement('div');
-      actions.className = 'entry-row-actions';
-      const status = entryStatus(entry);
-
-      function actionBtn(label, danger, onClick) {
-        const btn = document.createElement('button');
-        btn.className = 'entry-row-action-btn' + (danger ? ' danger' : '');
-        btn.textContent = label;
-        btn.onclick = (ev) => { ev.stopPropagation(); onClick(); };
-        return btn;
-      }
-
-      if (status === 'active') {
-        actions.appendChild(actionBtn('archive', false, () => archiveEntry(entry.id)));
-        actions.appendChild(actionBtn('delete', true, () => trashEntry(entry.id)));
-      } else if (status === 'archived') {
-        actions.appendChild(actionBtn('unarchive', false, () => unarchiveEntry(entry.id)));
-        actions.appendChild(actionBtn('delete', true, () => trashEntry(entry.id)));
-      } else if (status === 'trash') {
-        actions.appendChild(actionBtn('restore', false, () => restoreEntry(entry.id)));
-        actions.appendChild(actionBtn('delete forever', true, () => confirmDeleteForever(entry.id)));
-      }
-      row.appendChild(actions);
-
       entryList.appendChild(row);
     });
   }
+
+  // ---------- per-row overflow menu ----------
+  let openRowMenu = null; // { menuEl, triggerEl }
+
+  function closeRowMenu() {
+    if (openRowMenu) {
+      openRowMenu.menuEl.remove();
+      openRowMenu.triggerEl.classList.remove('menu-open');
+      openRowMenu = null;
+    }
+  }
+
+  function rowMenuItem(label, danger, onClick) {
+    const btn = document.createElement('button');
+    btn.className = 'row-menu-item' + (danger ? ' danger' : '');
+    btn.textContent = label;
+    btn.onclick = (ev) => {
+      ev.stopPropagation();
+      closeRowMenu();
+      onClick();
+    };
+    return btn;
+  }
+
+  function toggleRowMenu(entryId, triggerEl, anchorEl) {
+    const alreadyOpenForThis = openRowMenu && openRowMenu.triggerEl === triggerEl;
+    closeRowMenu();
+    if (alreadyOpenForThis) return;
+
+    const entry = entries.find(e => e.id === entryId);
+    if (!entry) return;
+    const status = entryStatus(entry);
+
+    const menu = document.createElement('div');
+    menu.className = 'row-menu';
+    menu.onclick = (ev) => ev.stopPropagation();
+
+    if (status === 'active') {
+      menu.appendChild(rowMenuItem('archive', false, () => confirmArchive(entryId)));
+      menu.appendChild(rowMenuItem('move to trash', false, () => trashEntry(entryId)));
+    } else if (status === 'archived') {
+      menu.appendChild(rowMenuItem('unarchive', false, () => unarchiveEntry(entryId)));
+      menu.appendChild(rowMenuItem('move to trash', false, () => trashEntry(entryId)));
+    } else if (status === 'trash') {
+      menu.appendChild(rowMenuItem('restore', false, () => restoreEntry(entryId)));
+      menu.appendChild(rowMenuItem('delete forever', true, () => confirmDeleteForever(entryId)));
+    }
+
+    anchorEl.appendChild(menu);
+    triggerEl.classList.add('menu-open');
+    openRowMenu = { menuEl: menu, triggerEl };
+  }
+
+  function confirmArchive(id) {
+    showModal(
+      'archive this entry?',
+      'it will move to the archived list. you can unarchive it later.',
+      [
+        { label: 'cancel' },
+        { label: 'archive', onClick: () => archiveEntry(id) }
+      ]
+    );
+  }
+
+  document.addEventListener('click', closeRowMenu);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeRowMenu();
+  });
 
   searchInput.addEventListener('input', renderList);
 
@@ -1947,8 +2253,8 @@
   // ---------- erase everything ----------
   eraseAllBtn.addEventListener('click', () => {
     showModal(
-      'erase all entries?',
-      'this permanently deletes every entry in this browser. your passphrase stays the same. this cannot be undone. export a backup first if you want to keep anything.',
+      'erase this notebook\u2019s entries?',
+      'this permanently deletes every entry and version in this notebook. your passphrase stays the same. other notebooks are not affected. this cannot be undone. export a backup first if you want to keep anything.',
       [
         { label: 'cancel' },
         { label: 'erase everything', danger: true, onClick: async () => {
@@ -1974,6 +2280,7 @@
       app: 'ledger',
       version: 2,
       exportedAt: new Date().toISOString(),
+      label: currentVaultLabel,
       salt: saltRecord.value,
       verify: verifyRecord.value,
       entries: rows,
@@ -1985,8 +2292,9 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    const safeLabel = (currentVaultLabel || 'ledger').toLowerCase().replace(/[^a-z0-9]+/g, '-');
     a.href = url;
-    a.download = `ledger-backup-${stamp}.json`;
+    a.download = `${safeLabel}-backup-${stamp}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1998,26 +2306,28 @@
 
   importBtn.addEventListener('click', () => {
     showModal(
-      'import a backup?',
-      'this replaces everything currently stored in this browser with the contents of the backup file. entries not in the backup will be lost. this cannot be undone.',
+      'restore a backup into this notebook?',
+      'this replaces everything in this notebook with the contents of the backup file. entries not in the backup will be lost. to open a backup as a separate notebook instead, use "import a notebook" from the notebook picker. this cannot be undone.',
       [
         { label: 'cancel' },
-        { label: 'choose file…', onClick: () => triggerRestoreFile(false) }
+        { label: 'choose file…', onClick: () => triggerRestoreFile('replace-current') }
       ]
     );
   });
 
-  importInstead.addEventListener('click', () => triggerRestoreFile(true));
+  // the picker screen's import always creates a brand new, independent vault
+  // from the backup file, never touching any existing notebook's data.
+  importVaultBtn.addEventListener('click', () => triggerRestoreFile('new-vault'));
 
-  function triggerRestoreFile(fromLockScreen) {
-    restoreFileInput.dataset.fromLock = fromLockScreen ? '1' : '0';
+  function triggerRestoreFile(mode) {
+    restoreFileInput.dataset.mode = mode;
     restoreFileInput.click();
   }
 
   restoreFileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const fromLock = restoreFileInput.dataset.fromLock === '1';
+    const mode = restoreFileInput.dataset.mode;
 
     try {
       const text = await file.text();
@@ -2025,7 +2335,36 @@
       if (!dump || dump.app !== 'ledger' || !dump.salt || !dump.verify || !Array.isArray(dump.entries)) {
         throw new Error('not a valid ledger backup file');
       }
+      restoreFileInput.value = '';
 
+      if (mode === 'new-vault') {
+        const label = (prompt('name this notebook (e.g. "personal", "work"):', dump.label || '') || '').trim();
+        if (!label) return;
+
+        const vaultId = genVaultId();
+        const newDb = await openDb(vaultId);
+        const putIn = (store, value) => new Promise((resolve, reject) => {
+          const tx = newDb.transaction(store, 'readwrite');
+          tx.objectStore(store).put(value);
+          tx.oncomplete = () => resolve();
+          tx.onerror = (ev) => reject(ev.target.error);
+        });
+        await putIn(STORE_META, { key: 'salt', value: dump.salt });
+        await putIn(STORE_META, { key: 'verify', value: dump.verify });
+        for (const row of dump.entries) await putIn(STORE_ENTRIES, row);
+        if (Array.isArray(dump.versions)) {
+          for (const row of dump.versions) await putIn(STORE_VERSIONS, row);
+        }
+        await putIn(STORE_META, { key: 'historyLimit', value: typeof dump.historyLimit === 'number' ? dump.historyLimit : DEFAULT_HISTORY_LIMIT });
+        newDb.close();
+
+        await registerVault(vaultId, label);
+        await showPicker();
+        showModal('notebook imported', `"${label}" has been added. select it and enter its passphrase to unlock it.`, [{ label: 'ok' }]);
+        return;
+      }
+
+      // mode === 'replace-current': restore into the vault that's currently open
       await idbClearAll(STORE_ENTRIES);
       await idbClearAll(STORE_META);
       await idbClearAll(STORE_VERSIONS);
@@ -2043,17 +2382,12 @@
       }
       await idbPut(STORE_META, { key: 'historyLimit', value: typeof dump.historyLimit === 'number' ? dump.historyLimit : DEFAULT_HISTORY_LIMIT });
 
-      restoreFileInput.value = '';
-
-      if (fromLock) {
-        lockError.textContent = '';
-        lockNote.textContent = 'backup restored. enter the passphrase used for that backup to unlock.';
-        await init();
-      } else {
-        // re-lock and force re-entry of passphrase, since restored data may use a different key
-        lockApp();
-        lockNote.textContent = 'backup restored. enter the passphrase used for that backup to unlock.';
-      }
+      // re-lock and force re-entry of passphrase, since restored data may use a different key
+      const vaultId = currentVaultId;
+      const label = currentVaultLabel;
+      await lockApp();
+      openVaultPassphraseScreen(vaultId, label);
+      lockNote.textContent = 'backup restored into this notebook. enter the passphrase used for that backup to unlock.';
     } catch (err) {
       restoreFileInput.value = '';
       showModal('import failed', err.message || 'could not read this file as a ledger backup.', [{ label: 'ok' }]);
