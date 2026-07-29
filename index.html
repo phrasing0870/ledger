@@ -498,6 +498,14 @@
     padding: 2px 7px;
     border-radius: 10px;
   }
+  .meta-chip-clickable {
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .meta-chip-clickable:hover {
+    border-color: var(--accent-interactive);
+    color: var(--text);
+  }
 
   .empty-state {
     text-align: center;
@@ -638,6 +646,7 @@
 
   .modal-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     justify-content: flex-end;
   }
@@ -856,6 +865,7 @@
       <div class="editor-actions">
         <button class="icon-btn" id="historyBtn">history</button>
         <button class="icon-btn" id="duplicateEntryBtn">duplicate</button>
+        <button class="icon-btn" id="exportEntryBtn">export as text</button>
         <button class="icon-btn hidden" id="archiveEntryBtn">archive</button>
         <button class="icon-btn hidden" id="unarchiveEntryBtn">unarchive</button>
         <button class="icon-btn hidden" id="restoreEntryBtn">restore</button>
@@ -1281,6 +1291,7 @@
   const deleteForeverBtn = $('deleteForeverBtn');
   const historyBtn = $('historyBtn');
   const duplicateEntryBtn = $('duplicateEntryBtn');
+  const exportEntryBtn = $('exportEntryBtn');
   const historyBackBtn = $('historyBackBtn');
   const historyList = $('historyList');
   const historyEmptyState = $('historyEmptyState');
@@ -1789,8 +1800,15 @@
         metaRow.className = 'entry-row-meta';
         entry.tags.forEach(t => {
           const chip = document.createElement('span');
-          chip.className = 'meta-chip';
+          chip.className = 'meta-chip meta-chip-clickable';
           chip.textContent = t;
+          chip.title = `filter by "${t}"`;
+          chip.onclick = (ev) => {
+            ev.stopPropagation();
+            searchInput.value = t;
+            if (currentView !== 'active') switchView('active');
+            else renderList();
+          };
           metaRow.appendChild(chip);
         });
         row.appendChild(metaRow);
@@ -2037,6 +2055,56 @@
     });
     await idbPut(STORE_ENTRIES, { id: copy.id, payload });
     await openEntry(copy.id);
+  });
+
+  // ---------- export single entry as plain text/markdown ----------
+  // this is the one deliberate way plaintext leaves the encrypted vault
+  // (aside from copy-paste while unlocked), so it's confirmed rather than instant.
+  function downloadEntryAs(entry, format) {
+    const dateStr = new Date(entry.updatedAt).toISOString();
+    const title = entry.title || 'untitled entry';
+    const tags = (entry.tags && entry.tags.length) ? entry.tags.join(', ') : '';
+    const safeTitle = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'untitled-entry';
+
+    let content, mimeType, ext;
+    if (format === 'md') {
+      const front = `---\ntitle: "${title.replace(/"/g, '\\"')}"\ndate: ${dateStr}\ntags: ${tags}\n---\n\n`;
+      content = front + (entry.body || '');
+      mimeType = 'text/markdown';
+      ext = 'md';
+    } else {
+      const header = `${title}\n${dateStr}${tags ? `\ntags: ${tags}` : ''}\n\n`;
+      content = header + (entry.body || '');
+      mimeType = 'text/plain';
+      ext = 'txt';
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeTitle}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  exportEntryBtn.addEventListener('click', async () => {
+    if (!currentEntryId) return;
+    await flushSave(true);
+    const entry = entries.find(e => e.id === currentEntryId);
+    if (!entry) return;
+
+    showModal(
+      'export this entry as a text file?',
+      'this saves an unencrypted copy of this one entry to your downloads, for sharing or use elsewhere. the rest of your notebook stays encrypted; only this entry leaves as plain text.',
+      [
+        { label: 'cancel' },
+        { label: '.txt', onClick: () => downloadEntryAs(entry, 'txt') },
+        { label: '.md', onClick: () => downloadEntryAs(entry, 'md') }
+      ]
+    );
   });
 
   async function renderSettingsStats() {
