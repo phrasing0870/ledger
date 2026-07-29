@@ -974,10 +974,12 @@
   const REGISTRY_DB_VERSION = 1;
   const STORE_VAULTS = 'vaults';
   const DB_NAME_PREFIX = 'ledger_db__';
-  const DB_VERSION = 2;
+  const DB_VERSION = 3;
   const STORE_ENTRIES = 'entries';
   const STORE_META = 'meta';
   const STORE_VERSIONS = 'versions';
+  const STORE_STAGING_ENTRIES = 'staging_entries';
+  const STORE_STAGING_VERSIONS = 'staging_versions';
   const PBKDF2_ITERATIONS = 650000;
   const STALE_EXPORT_DAYS = 7;
   const DEFAULT_HISTORY_LIMIT = 15;
@@ -1027,6 +1029,12 @@
         if (!_db.objectStoreNames.contains(STORE_VERSIONS)) {
           const versionsStore = _db.createObjectStore(STORE_VERSIONS, { keyPath: 'id' });
           versionsStore.createIndex('entryId', 'entryId', { unique: false });
+        }
+        if (!_db.objectStoreNames.contains(STORE_STAGING_ENTRIES)) {
+          _db.createObjectStore(STORE_STAGING_ENTRIES, { keyPath: 'id' });
+        }
+        if (!_db.objectStoreNames.contains(STORE_STAGING_VERSIONS)) {
+          _db.createObjectStore(STORE_STAGING_VERSIONS, { keyPath: 'id' });
         }
       };
       req.onsuccess = (e) => resolve(e.target.result);
@@ -1434,6 +1442,7 @@
 
     try {
       db = await openDb(currentVaultId);
+      await recoverInterruptedRekey();
       const saltRecord = await idbGet(STORE_META, 'salt');
       const verifyRecord = await idbGet(STORE_META, 'verify');
       cryptoKey = await deriveKey(p1, saltRecord.value);
@@ -2295,48 +2304,60 @@
 
       changePassBtn.textContent = 're-encrypting…';
 
-      // derive new key + salt, re-encrypt every entry AND every stored version,
-      // build the full new dataset before committing anything
+      // Step 1: derive the new key, then decrypt+re-encrypt every entry and
+      // version, writing each one into STAGING stores (never touching the
+      // live stores yet). If the tab dies anywhere in this loop, the live
+      // vault is completely untouched and still fully readable under the
+      // OLD passphrase — nothing is lost.
       const newSalt = randomSaltB64();
       const newKey = await deriveKey(next, newSalt);
 
+      await idbClearAll(STORE_STAGING_ENTRIES);
+      await idbClearAll(STORE_STAGING_VERSIONS);
+
       const rows = await idbGetAll(STORE_ENTRIES);
       const versionRows = await idbGetAll(STORE_VERSIONS);
-      const reencrypted = [];
-      const reencryptedVersions = [];
+      let stagedEntryCount = 0;
+
       cryptoKey = currentKeyCheck; // ensure decrypts use verified current key
       for (const row of rows) {
         const decrypted = await decryptJson(row.payload);
         cryptoKey = newKey;
         const payload = await encryptJson(decrypted);
-        reencrypted.push({ id: row.id, payload });
+        await idbPut(STORE_STAGING_ENTRIES, { id: row.id, payload });
+        stagedEntryCount++;
         cryptoKey = currentKeyCheck;
       }
       for (const row of versionRows) {
         const decrypted = await decryptJson(row.payload);
         cryptoKey = newKey;
         const payload = await encryptJson(decrypted);
-        reencryptedVersions.push({ id: row.id, entryId: row.entryId, savedAt: row.savedAt, payload });
+        await idbPut(STORE_STAGING_VERSIONS, { id: row.id, entryId: row.entryId, savedAt: row.savedAt, payload });
         cryptoKey = currentKeyCheck;
       }
 
       cryptoKey = newKey;
       const newVerify = await encryptJson({ check: 'ledger-ok' });
+      const newSaltVerifyPayload = { salt: newSalt, verify: newVerify };
 
-      // commit: only after everything above succeeded
-      await idbPut(STORE_META, { key: 'salt', value: newSalt });
-      await idbPut(STORE_META, { key: 'verify', value: newVerify });
-      for (const row of reencrypted) {
-        await idbPut(STORE_ENTRIES, row);
-      }
-      for (const row of reencryptedVersions) {
-        await idbPut(STORE_VERSIONS, row);
-      }
+      changePassBtn.textContent = 'finishing…';
 
+      // Step 2: flip a marker so that if the tab dies between here and the
+      // final swap, next unlock knows fully-staged new-key data exists and
+      // is safe to finish applying (rather than silently reading stale
+      // salt/verify against a half-migrated vault, which was the original bug).
+      await idbPut(STORE_META, { key: 'rekeyPending', value: newSaltVerifyPayload });
+
+      // Step 3: one short, atomic transaction that clears the live stores,
+      // copies the already-verified staged data in, commits the new
+      // salt/verify, and clears the pending marker — all or nothing.
+      await commitRekey(newSaltVerifyPayload);
+
+      cryptoKey = newKey;
       currentPassInput.value = '';
       newPassInput.value = '';
       newPassConfirmInput.value = '';
-      sessionDecryptStats = { verified: reencrypted.length, failed: 0 };
+      sessionDecryptStats = { verified: stagedEntryCount, failed: 0 };
       passChangeSuccess.textContent = 'passphrase changed. export a fresh backup, the old backup file no longer matches this passphrase.';
       await renderSettingsStats();
     } catch (e) {
@@ -2346,6 +2367,60 @@
       changePassBtn.textContent = 'change passphrase';
     }
   });
+
+  // performs the final swap from staged (new-key) data to the live stores in
+  // a single IndexedDB transaction spanning all affected stores, so it is
+  // atomic: either every store ends up consistent, or (on failure) none of
+  // them are touched and the live vault remains exactly as it was.
+  function commitRekey(saltVerifyPayload) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction([STORE_ENTRIES, STORE_VERSIONS, STORE_STAGING_ENTRIES, STORE_STAGING_VERSIONS, STORE_META], 'readwrite');
+
+      tx.objectStore(STORE_ENTRIES).clear();
+      tx.objectStore(STORE_VERSIONS).clear();
+
+      const stagedEntriesReq = tx.objectStore(STORE_STAGING_ENTRIES).getAll();
+      const stagedVersionsReq = tx.objectStore(STORE_STAGING_VERSIONS).getAll();
+
+      stagedEntriesReq.onsuccess = () => {
+        for (const row of stagedEntriesReq.result) {
+          tx.objectStore(STORE_ENTRIES).put(row);
+        }
+      };
+      stagedVersionsReq.onsuccess = () => {
+        for (const row of stagedVersionsReq.result) {
+          tx.objectStore(STORE_VERSIONS).put(row);
+        }
+      };
+
+      tx.objectStore(STORE_META).put({ key: 'salt', value: saltVerifyPayload.salt });
+      tx.objectStore(STORE_META).put({ key: 'verify', value: saltVerifyPayload.verify });
+      tx.objectStore(STORE_META).delete('rekeyPending');
+      tx.objectStore(STORE_STAGING_ENTRIES).clear();
+      tx.objectStore(STORE_STAGING_VERSIONS).clear();
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e.target.error);
+      tx.onabort = (e) => reject(e.target.error || new Error('rekey transaction aborted'));
+    });
+  }
+
+  // called right after opening a vault's DB, before unlock. if a previous
+  // passphrase change was interrupted after staging completed but before the
+  // final swap, the staged (fully re-encrypted, verified) data is still
+  // sitting safely in the staging stores and the live vault is untouched.
+  // this finishes that interrupted swap so the vault converges to a single
+  // consistent state rather than being stuck mid-migration.
+  async function recoverInterruptedRekey() {
+    const pending = await idbGet(STORE_META, 'rekeyPending');
+    if (!pending || !pending.value) return;
+    try {
+      await commitRekey(pending.value);
+      console.warn('recovered an interrupted passphrase change on this vault.');
+    } catch (e) {
+      console.error('failed to recover an interrupted passphrase change; staged data left in place for next attempt', e);
+    }
+  }
 
   // ---------- erase everything ----------
   eraseAllBtn.addEventListener('click', () => {
