@@ -1500,8 +1500,24 @@
       const verifyRecord = await idbGet(STORE_META, 'verify');
       const kdfRecord = await idbGet(STORE_META, 'kdf');
       const kdf = kdfRecord ? kdfRecord.value : KDF_PBKDF2; // vaults from before this change never wrote a kdf field
-      lockSubmit.textContent = kdf === KDF_ARGON2ID ? 'unlocking… (this can take a moment)' : 'unlocking…';
-      cryptoKey = await deriveKeyForVault(p1, saltRecord.value, kdf);
+
+      let progressTimer = null;
+      if (kdf === KDF_ARGON2ID) {
+        const startedAt = Date.now();
+        lockSubmit.textContent = 'unlocking… (0s)';
+        progressTimer = setInterval(() => {
+          const secs = Math.floor((Date.now() - startedAt) / 1000);
+          lockSubmit.textContent = `unlocking… (${secs}s)`;
+        }, 500);
+      } else {
+        lockSubmit.textContent = 'unlocking…';
+      }
+
+      try {
+        cryptoKey = await deriveKeyForVault(p1, saltRecord.value, kdf);
+      } finally {
+        if (progressTimer) clearInterval(progressTimer);
+      }
       await decryptJson(verifyRecord.value); // throws if wrong passphrase
       if (recoveredRekey) {
         lockNote.textContent = 'an interrupted passphrase change from last time was completed automatically. if this didn\u2019t unlock, try the newer passphrase you set.';
@@ -2357,7 +2373,22 @@
       const verifyRecord = await idbGet(STORE_META, 'verify');
       const kdfRecord = await idbGet(STORE_META, 'kdf');
       const currentKdf = kdfRecord ? kdfRecord.value : KDF_PBKDF2;
-      const currentKeyCheck = await deriveKeyForVault(current, saltRecord.value, currentKdf);
+
+      let verifyProgressTimer = null;
+      if (currentKdf === KDF_ARGON2ID) {
+        const startedAt = Date.now();
+        verifyProgressTimer = setInterval(() => {
+          const secs = Math.floor((Date.now() - startedAt) / 1000);
+          changePassBtn.textContent = `verifying… (${secs}s)`;
+        }, 500);
+      }
+      let currentKeyCheck;
+      try {
+        currentKeyCheck = await deriveKeyForVault(current, saltRecord.value, currentKdf);
+      } finally {
+        if (verifyProgressTimer) clearInterval(verifyProgressTimer);
+      }
+
       const savedKey = cryptoKey;
       cryptoKey = currentKeyCheck;
       try {
