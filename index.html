@@ -752,6 +752,14 @@
     .meta-row { flex-direction: column; }
   }
 </style>
+<script type="module">
+  // Argon2id support via hash-wasm, loaded once and exposed on window so the
+  // main (non-module) script below can call it. PBKDF2 remains fully native
+  // via Web Crypto and needs no dependency; this is only for Argon2id.
+  import { argon2id } from 'https://cdn.jsdelivr.net/npm/hash-wasm@4.11.0/dist/index.esm.min.js';
+  window.__argon2id = argon2id;
+  window.__argon2idReady = true;
+</script>
 </head>
 <body>
 
@@ -914,7 +922,7 @@
     <div class="settings-section">
       <div class="settings-section-title">encryption</div>
       <div class="settings-stat-row"><span>cipher</span><span>AES-256-GCM</span></div>
-      <div class="settings-stat-row"><span>key derivation</span><span>PBKDF2-SHA256, 650,000 iterations</span></div>
+      <div class="settings-stat-row"><span>key derivation</span><span id="statKdf">—</span></div>
       <div class="settings-stat-row"><span>entries verified this session</span><span id="statVerified">—</span></div>
       <div class="settings-section-desc" id="cryptoStatusNote" style="margin-top: 12px; margin-bottom: 0;"></div>
     </div>
@@ -981,6 +989,12 @@
   const STORE_STAGING_ENTRIES = 'staging_entries';
   const STORE_STAGING_VERSIONS = 'staging_versions';
   const PBKDF2_ITERATIONS = 650000;
+  const ARGON2ID_MEMORY_KB = 65536; // 64 MB
+  const ARGON2ID_ITERATIONS = 3;
+  const ARGON2ID_PARALLELISM = 1;
+  const KDF_PBKDF2 = 'pbkdf2';
+  const KDF_ARGON2ID = 'argon2id';
+  const CURRENT_DEFAULT_KDF = KDF_ARGON2ID;
   const STALE_EXPORT_DAYS = 7;
   const DEFAULT_HISTORY_LIMIT = 15;
   const AUTO_LOCK_STORAGE_KEY = 'ledger_autolock_minutes';
@@ -1142,7 +1156,17 @@
   }
 
   // ---------- crypto ----------
-  async function deriveKey(passphrase, saltB64) {
+  async function waitForArgon2Ready(timeoutMs) {
+    const start = Date.now();
+    while (!window.__argon2idReady) {
+      if (Date.now() - start > timeoutMs) {
+        throw new Error('Argon2id library failed to load. Check your internet connection and reload the page.');
+      }
+      await new Promise(r => setTimeout(r, 50));
+    }
+  }
+
+  async function deriveKeyPBKDF2(passphrase, saltB64) {
     const salt = b64ToBuf(saltB64);
     const baseKey = await crypto.subtle.importKey(
       'raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']
@@ -1154,6 +1178,33 @@
       false,
       ['encrypt', 'decrypt']
     );
+  }
+
+  async function deriveKeyArgon2id(passphrase, saltB64) {
+    await waitForArgon2Ready(15000);
+    const salt = new Uint8Array(b64ToBuf(saltB64));
+    const keyHex = await window.__argon2id({
+      password: passphrase,
+      salt,
+      memorySize: ARGON2ID_MEMORY_KB,
+      iterations: ARGON2ID_ITERATIONS,
+      parallelism: ARGON2ID_PARALLELISM,
+      hashLength: 32,
+      outputType: 'hex'
+    });
+    const keyBytes = new Uint8Array(keyHex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+    return crypto.subtle.importKey(
+      'raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']
+    );
+  }
+
+  // dispatches to the correct KDF based on what a given vault was set up
+  // with. existing vaults keep working under PBKDF2 forever unless the
+  // passphrase is changed, which upgrades them to Argon2id as part of the
+  // same re-encryption pass. new vaults default to Argon2id from creation.
+  async function deriveKeyForVault(passphrase, saltB64, kdf) {
+    if (kdf === KDF_ARGON2ID) return deriveKeyArgon2id(passphrase, saltB64);
+    return deriveKeyPBKDF2(passphrase, saltB64);
   }
 
   async function encryptJson(obj) {
@@ -1255,6 +1306,7 @@
   const statSize = $('statSize');
   const statLastExport = $('statLastExport');
   const statVerified = $('statVerified');
+  const statKdf = $('statKdf');
   const cryptoStatusNote = $('cryptoStatusNote');
   const currentPassInput = $('currentPassInput');
   const newPassInput = $('newPassInput');
@@ -1422,10 +1474,11 @@
 
     db = await openDb(currentVaultId);
     const salt = randomSaltB64();
-    cryptoKey = await deriveKey(p1, salt);
+    cryptoKey = await deriveKeyForVault(p1, salt, CURRENT_DEFAULT_KDF);
     const verifyPayload = await encryptJson({ check: 'ledger-ok' });
     await idbPut(STORE_META, { key: 'salt', value: salt });
     await idbPut(STORE_META, { key: 'verify', value: verifyPayload });
+    await idbPut(STORE_META, { key: 'kdf', value: CURRENT_DEFAULT_KDF });
     await registerVault(currentVaultId, label);
     currentVaultLabel = label;
 
@@ -1442,11 +1495,17 @@
 
     try {
       db = await openDb(currentVaultId);
-      await recoverInterruptedRekey();
+      const recoveredRekey = await recoverInterruptedRekey();
       const saltRecord = await idbGet(STORE_META, 'salt');
       const verifyRecord = await idbGet(STORE_META, 'verify');
-      cryptoKey = await deriveKey(p1, saltRecord.value);
+      const kdfRecord = await idbGet(STORE_META, 'kdf');
+      const kdf = kdfRecord ? kdfRecord.value : KDF_PBKDF2; // vaults from before this change never wrote a kdf field
+      lockSubmit.textContent = kdf === KDF_ARGON2ID ? 'unlocking… (this can take a moment)' : 'unlocking…';
+      cryptoKey = await deriveKeyForVault(p1, saltRecord.value, kdf);
       await decryptJson(verifyRecord.value); // throws if wrong passphrase
+      if (recoveredRekey) {
+        lockNote.textContent = 'an interrupted passphrase change from last time was completed automatically. if this didn\u2019t unlock, try the newer passphrase you set.';
+      }
 
       const rows = await idbGetAll(STORE_ENTRIES);
       entries = [];
@@ -1977,6 +2036,12 @@
       ? new Date(lastExportRecord.value).toLocaleString()
       : 'never';
 
+    const kdfRecord = await idbGet(STORE_META, 'kdf');
+    const kdf = kdfRecord ? kdfRecord.value : KDF_PBKDF2;
+    statKdf.textContent = kdf === KDF_ARGON2ID
+      ? 'Argon2id, 64 MB memory, 3 iterations'
+      : 'PBKDF2-SHA256, 650,000 iterations (legacy — change your passphrase to upgrade to Argon2id)';
+
     const total = sessionDecryptStats.verified + sessionDecryptStats.failed;
     if (total === 0) {
       statVerified.textContent = 'n/a, no entries yet';
@@ -2286,10 +2351,13 @@
     changePassBtn.textContent = 'verifying…';
 
     try {
-      // verify current passphrase against the currently active key material
+      // verify current passphrase against the currently active key material,
+      // using whichever KDF this vault was actually set up with
       const saltRecord = await idbGet(STORE_META, 'salt');
       const verifyRecord = await idbGet(STORE_META, 'verify');
-      const currentKeyCheck = await deriveKey(current, saltRecord.value);
+      const kdfRecord = await idbGet(STORE_META, 'kdf');
+      const currentKdf = kdfRecord ? kdfRecord.value : KDF_PBKDF2;
+      const currentKeyCheck = await deriveKeyForVault(current, saltRecord.value, currentKdf);
       const savedKey = cryptoKey;
       cryptoKey = currentKeyCheck;
       try {
@@ -2302,15 +2370,17 @@
         return;
       }
 
-      changePassBtn.textContent = 're-encrypting…';
+      changePassBtn.textContent = currentKdf === KDF_PBKDF2 ? 'upgrading encryption and re-encrypting…' : 're-encrypting…';
 
-      // Step 1: derive the new key, then decrypt+re-encrypt every entry and
-      // version, writing each one into STAGING stores (never touching the
-      // live stores yet). If the tab dies anywhere in this loop, the live
-      // vault is completely untouched and still fully readable under the
-      // OLD passphrase — nothing is lost.
+      // Step 1: derive the new key (always upgrading to the current default
+      // KDF, Argon2id, even if the vault started on PBKDF2), then
+      // decrypt+re-encrypt every entry and version, writing each one into
+      // STAGING stores (never touching the live stores yet). If the tab
+      // dies anywhere in this loop, the live vault is completely untouched
+      // and still fully readable under the OLD passphrase — nothing is lost.
       const newSalt = randomSaltB64();
-      const newKey = await deriveKey(next, newSalt);
+      const newKdf = CURRENT_DEFAULT_KDF;
+      const newKey = await deriveKeyForVault(next, newSalt, newKdf);
 
       await idbClearAll(STORE_STAGING_ENTRIES);
       await idbClearAll(STORE_STAGING_VERSIONS);
@@ -2338,7 +2408,7 @@
 
       cryptoKey = newKey;
       const newVerify = await encryptJson({ check: 'ledger-ok' });
-      const newSaltVerifyPayload = { salt: newSalt, verify: newVerify };
+      const newSaltVerifyPayload = { salt: newSalt, verify: newVerify, kdf: newKdf };
 
       changePassBtn.textContent = 'finishing…';
 
@@ -2395,6 +2465,7 @@
 
       tx.objectStore(STORE_META).put({ key: 'salt', value: saltVerifyPayload.salt });
       tx.objectStore(STORE_META).put({ key: 'verify', value: saltVerifyPayload.verify });
+      tx.objectStore(STORE_META).put({ key: 'kdf', value: saltVerifyPayload.kdf });
       tx.objectStore(STORE_META).delete('rekeyPending');
       tx.objectStore(STORE_STAGING_ENTRIES).clear();
       tx.objectStore(STORE_STAGING_VERSIONS).clear();
@@ -2413,12 +2484,14 @@
   // consistent state rather than being stuck mid-migration.
   async function recoverInterruptedRekey() {
     const pending = await idbGet(STORE_META, 'rekeyPending');
-    if (!pending || !pending.value) return;
+    if (!pending || !pending.value) return false;
     try {
       await commitRekey(pending.value);
       console.warn('recovered an interrupted passphrase change on this vault.');
+      return true;
     } catch (e) {
       console.error('failed to recover an interrupted passphrase change; staged data left in place for next attempt', e);
+      return false;
     }
   }
 
@@ -2444,17 +2517,19 @@
   exportBtn.addEventListener('click', async () => {
     const saltRecord = await idbGet(STORE_META, 'salt');
     const verifyRecord = await idbGet(STORE_META, 'verify');
+    const kdfRecord = await idbGet(STORE_META, 'kdf');
     const rows = await idbGetAll(STORE_ENTRIES);
     const versionRows = await idbGetAll(STORE_VERSIONS);
     const historyLimitRecord = await idbGet(STORE_META, 'historyLimit');
 
     const dump = {
       app: 'ledger',
-      version: 2,
+      version: 3,
       exportedAt: new Date().toISOString(),
       label: currentVaultLabel,
       salt: saltRecord.value,
       verify: verifyRecord.value,
+      kdf: kdfRecord ? kdfRecord.value : KDF_PBKDF2,
       entries: rows,
       versions: versionRows,
       historyLimit: historyLimitRecord ? historyLimitRecord.value : DEFAULT_HISTORY_LIMIT
@@ -2524,6 +2599,7 @@
         });
         await putIn(STORE_META, { key: 'salt', value: dump.salt });
         await putIn(STORE_META, { key: 'verify', value: dump.verify });
+        await putIn(STORE_META, { key: 'kdf', value: dump.kdf || KDF_PBKDF2 });
         for (const row of dump.entries) await putIn(STORE_ENTRIES, row);
         if (Array.isArray(dump.versions)) {
           for (const row of dump.versions) await putIn(STORE_VERSIONS, row);
@@ -2541,8 +2617,11 @@
       await idbClearAll(STORE_ENTRIES);
       await idbClearAll(STORE_META);
       await idbClearAll(STORE_VERSIONS);
+      await idbClearAll(STORE_STAGING_ENTRIES);
+      await idbClearAll(STORE_STAGING_VERSIONS);
       await idbPut(STORE_META, { key: 'salt', value: dump.salt });
       await idbPut(STORE_META, { key: 'verify', value: dump.verify });
+      await idbPut(STORE_META, { key: 'kdf', value: dump.kdf || KDF_PBKDF2 });
       for (const row of dump.entries) {
         await idbPut(STORE_ENTRIES, row);
       }
